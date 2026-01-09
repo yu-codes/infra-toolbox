@@ -1,0 +1,25 @@
+services:
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: minio
+    env_file:
+      - ./.env
+    volumes:
+      - ./data:/data
+    ports:
+      - "10010:9000"
+      - "10011:9090"
+    command: server /data --console-address ":9090"
+    networks:
+      - infra-toolbox-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  infra-toolbox-network:
+    name: infra-toolbox-network
+    external: true

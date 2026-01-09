@@ -205,3 +205,42 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+# ============================================
+# 服務運行產生的資料目錄
+# ============================================
+# PostgreSQL
+postgres/data/
+
+# MinIO
+minio/data/
+
+# File Browser
+filebrowser/data/
+filebrowser/database/
+
+# PostgreSQL Backup
+postgres_backup/backups/
+
+# MinIO Backup
+minio_backup/backups/
+
+# ============================================
+# Docker 相關
+# ============================================
+docker-compose.override.yml
+
+# ============================================
+# Node.js (若有前端相關)
+# ============================================
+node_modules/
+
+# ============================================
+# 日誌檔案
+# ============================================
+logs/
+
+# ============================================
+# 系統檔案
+# ============================================
+.DS_Store
+Thumbs.db

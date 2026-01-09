@@ -1,0 +1,57 @@
+services:
+  # Host metrics - Linux (Docker Desktop runs Linux VM)
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    restart: unless-stopped
+    ports:
+      - "10001:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - infra-toolbox-network
+
+  # Container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: unless-stopped
+    ports:
+      - "10002:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    networks:
+      - infra-toolbox-network
+
+  # Resource Monitoring API
+  monitoring-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: monitoring-api
+    restart: unless-stopped
+    ports:
+      - "10003:8000"
+    environment:
+      - NODE_EXPORTER_URL=http://node_exporter:9100
+      - CADVISOR_URL=http://cadvisor:8080
+    depends_on:
+      - node_exporter
+      - cadvisor
+    networks:
+      - infra-toolbox-network
+
+networks:
+  infra-toolbox-network:
+    name: infra-toolbox-network
+    external: true

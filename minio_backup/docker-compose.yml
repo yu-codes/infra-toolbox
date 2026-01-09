@@ -1,0 +1,23 @@
+services:
+  minio-backup:
+    image: minio/mc:latest
+    container_name: minio-backup
+    env_file:
+      - ./.env
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "MinIO Backup Service Ready"
+        echo "Use: docker exec minio-backup /scripts/backup.sh"
+        tail -f /dev/null
+    networks:
+      - infra-toolbox-network
+    restart: unless-stopped
+
+networks:
+  infra-toolbox-network:
+    name: infra-toolbox-network
+    external: true

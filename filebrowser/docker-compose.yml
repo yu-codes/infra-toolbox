@@ -1,0 +1,22 @@
+services:
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    container_name: filebrowser
+    ports:
+      - "10020:80"
+    volumes:
+      - ./data:/srv
+      - ./database:/database
+    command:
+      - --database=/database/filebrowser.db
+      - --root=/srv
+      - --address=0.0.0.0
+      - --port=80
+    networks:
+      - infra-toolbox-network
+    restart: unless-stopped
+
+networks:
+  infra-toolbox-network:
+    name: infra-toolbox-network
+    external: true

@@ -1,0 +1,23 @@
+services:
+  postgres-backup:
+    image: postgres:16-alpine
+    container_name: postgres-backup
+    env_file:
+      - ./.env
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "PostgreSQL Backup Service Ready"
+        echo "Use: docker exec postgres-backup /scripts/backup.sh [full|incremental|remote]"
+        tail -f /dev/null
+    networks:
+      - infra-toolbox-network
+    restart: unless-stopped
+
+networks:
+  infra-toolbox-network:
+    name: infra-toolbox-network
+    external: true

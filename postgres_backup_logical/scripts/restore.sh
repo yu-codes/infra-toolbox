@@ -1,6 +1,6 @@
 #!/bin/sh
 # ============================================
-# PostgreSQL 還原腳本
+# PostgreSQL 邏輯還原腳本 (psql/pg_restore)
 # 支援: 解密 + 解壓縮 + 還原
 # ============================================
 
@@ -138,7 +138,7 @@ do_restore() {
 
 # 列出可用備份
 list_backups() {
-    log "Available backups in $BACKUP_DIR:"
+    echo "===== AVAILABLE BACKUPS ====="
     echo ""
     echo "=== Full Backups ==="
     ls -lh "$BACKUP_DIR/full/" 2>/dev/null || echo "  (none)"
@@ -150,26 +150,63 @@ list_backups() {
     ls -lh "$BACKUP_DIR/remote/" 2>/dev/null || echo "  (none)"
 }
 
+# 驗證備份檔案
+verify_backup() {
+    local backup_file="$1"
+    
+    [ ! -f "$backup_file" ] && error_exit "Backup file not found: $backup_file"
+    
+    log "===== VERIFY BACKUP ====="
+    log "File: $backup_file"
+    
+    local file_type=$(detect_file_type "$backup_file")
+    local is_encrypted=$(echo "$file_type" | cut -d: -f1)
+    local is_compressed=$(echo "$file_type" | cut -d: -f2)
+    
+    echo ""
+    echo "File Info:"
+    echo "  Size: $(du -h "$backup_file" | cut -f1)"
+    echo "  Encrypted: $is_encrypted"
+    echo "  Compressed: $is_compressed"
+    
+    # 測試解壓縮/解密
+    if [ "$is_encrypted" = "true" ] && [ "$is_compressed" = "true" ]; then
+        if [ -z "$BACKUP_ENCRYPTION_PASSWORD" ]; then
+            echo "  Integrity: Cannot verify (password required)"
+        else
+            if openssl enc -aes-256-cbc -d -pbkdf2 -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
+                -in "$backup_file" 2>/dev/null | gunzip -t 2>/dev/null; then
+                echo "  Integrity: OK"
+            else
+                echo "  Integrity: FAILED"
+            fi
+        fi
+    elif [ "$is_compressed" = "true" ]; then
+        if gunzip -t "$backup_file" 2>/dev/null; then
+            echo "  Integrity: OK"
+        else
+            echo "  Integrity: FAILED"
+        fi
+    else
+        echo "  Integrity: OK (plain text)"
+    fi
+    
+    log "===== VERIFICATION COMPLETE ====="
+}
+
 # 顯示使用說明
 usage() {
-    echo "Usage: $0 [restore <backup_file>|list]"
+    echo "Usage: $0 [restore <backup_file>|list|verify <backup_file>]"
     echo ""
     echo "Commands:"
     echo "  restore <file> - Restore from backup file"
     echo "  list           - List available backups"
+    echo "  verify <file>  - Verify backup file integrity"
     echo ""
     echo "Examples:"
-    echo "  $0 restore /backups/full/full_20260105_120000.sql.gz.enc"
+    echo "  $0 restore /backups/full/full_20260105_120000.sql.gz"
     echo "  $0 list"
-    echo ""
-    echo "Environment Variables (Restore-specific):"
-    echo "  RESTORE_POSTGRES_HOST     - Target host (default: POSTGRES_HOST)"
-    echo "  RESTORE_POSTGRES_PORT     - Target port (default: POSTGRES_PORT)"
-    echo "  RESTORE_POSTGRES_USERNAME - Target user (default: POSTGRES_USERNAME)"
-    echo "  RESTORE_POSTGRES_PASSWORD - Target password (default: POSTGRES_PASSWORD)"
-    echo "  RESTORE_POSTGRES_DATABASE - Target database (default: POSTGRES_DATABASE)"
-    echo "  RESTORE_DROP_DATABASE     - Drop existing database (default: false)"
-    echo "  RESTORE_CREATE_DATABASE   - Create database if not exists (default: true)"
+    echo "  $0 verify /backups/full/full_20260105_120000.sql.gz"
     exit 1
 }
 
@@ -181,6 +218,10 @@ case "${1:-}" in
         ;;
     list)
         list_backups
+        ;;
+    verify)
+        [ -z "$2" ] && error_exit "Backup file path is required"
+        verify_backup "$2"
         ;;
     *)
         usage

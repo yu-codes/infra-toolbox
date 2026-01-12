@@ -1,0 +1,70 @@
+# .ai-rules - 通用 AI 規則配置
+# 此檔案用於配置專案中使用的 AI Skills
+# 可被轉換為各 IDE 專用格式 (.cursorrules, .windsurfrules, .clinerules 等)
+
+# ===========================================
+# 啟用的 Skills
+# ===========================================
+skills:
+  # 範例：啟用特定 Skill
+  # - path: skills/skills/canvas-design/SKILL.md
+  #   enabled: true
+  #   description: 視覺畫布設計
+  
+  # - path: skills/skills/frontend-design/SKILL.md
+  #   enabled: true
+  #   description: 前端設計規範
+
+# ===========================================
+# 全域規則
+# ===========================================
+global_rules: |
+  ## 語言設定
+  - 使用繁體中文回應
+  - 程式碼註解使用英文
+  - 變數名稱使用英文 camelCase 或 snake_case
+  
+  ## 程式碼風格
+  - 遵循專案現有的程式碼風格
+  - 函數/方法保持單一職責
+  - 適當添加錯誤處理
+  
+  ## 回應風格
+  - 簡潔明瞭
+  - 提供程式碼範例時包含必要註解
+  - 解釋重要的設計決策
+
+# ===========================================
+# 專案資訊
+# ===========================================
+project:
+  name: infra-toolbox
+  type: infrastructure
+  languages:
+    - shell
+    - python
+    - yaml
+  frameworks: []
+  
+# ===========================================
+# 使用說明
+# ===========================================
+# 
+# 1. 複製此檔案到專案根目錄
+# 2. 根據需要啟用/停用 Skills
+# 3. 轉換為對應 IDE 格式：
+#
+# Cursor:
+#   cat .ai-rules | yq '.global_rules' > .cursorrules
+#
+# Windsurf:
+#   cat .ai-rules | yq '.global_rules' > .windsurfrules
+#
+# Cline:
+#   cat .ai-rules | yq '.global_rules' > .clinerules
+#
+# 或直接將 Skill 內容合併：
+#   for skill in $(yq '.skills[] | select(.enabled == true) | .path' .ai-rules); do
+#     cat "$skill" >> .cursorrules
+#     echo -e "\n---\n" >> .cursorrules
+#   done

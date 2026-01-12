@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  postgres-backup-physical:
+    image: postgres:14-alpine
+    container_name: postgres-backup-physical
+    env_file:
+      - ./.env
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups:/backups
+      # WAL 歸檔目錄 (可連接到 postgres 的備份目錄)
+      - ./wal_archive:/postgres_backups/wal
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        chmod +x /scripts/*.sh
+        echo "============================================"
+        echo "PostgreSQL Physical Backup Service Ready"
+        echo "============================================"
+        echo ""
+        echo "=== Backup Commands ==="
+        echo "  Base Backup: docker exec postgres-backup-physical /scripts/backup.sh base"
+        echo "  WAL Archive: docker exec postgres-backup-physical /scripts/backup.sh wal"
+        echo "  Switch WAL:  docker exec postgres-backup-physical /scripts/backup.sh switch"
+        echo "  Remote:      docker exec postgres-backup-physical /scripts/backup.sh remote"
+        echo "  Status:      docker exec postgres-backup-physical /scripts/backup.sh status"
+        echo ""
+        echo "=== Restore Commands ==="
+        echo "  List:        docker exec postgres-backup-physical /scripts/restore.sh list"
+        echo "  PITR:        docker exec postgres-backup-physical /scripts/restore.sh pitr <base> <time>"
+        echo "============================================"
+        tail -f /dev/null
+    networks:
+      - infra-toolbox-network
+    restart: unless-stopped
+
+networks:
+  infra-toolbox-network:
+    name: infra-toolbox-network
+    external: true

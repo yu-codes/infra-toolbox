@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  postgres-backup-logical:
+    image: postgres:14-alpine
+    container_name: postgres-backup-logical
+    env_file:
+      - ./.env
+    volumes:
+      - ./scripts:/scripts:ro
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        chmod +x /scripts/*.sh
+        echo "============================================"
+        echo "PostgreSQL Logical Backup Service Ready"
+        echo "============================================"
+        echo ""
+        echo "=== Backup Commands ==="
+        echo "  Full:        docker exec postgres-backup-logical /scripts/backup.sh full"
+        echo "  Incremental: docker exec postgres-backup-logical /scripts/backup.sh incremental"
+        echo "  Remote:      docker exec postgres-backup-logical /scripts/backup.sh remote"
+        echo ""
+        echo "=== Restore Commands ==="
+        echo "  List:        docker exec postgres-backup-logical /scripts/restore.sh list"
+        echo "  Restore:     docker exec postgres-backup-logical /scripts/restore.sh restore <file>"
+        echo "============================================"
+        tail -f /dev/null
+    networks:
+      - infra-toolbox-network
+    restart: unless-stopped
+
+networks:
+  infra-toolbox-network:
+    name: infra-toolbox-network
+    external: true

@@ -1,7 +1,7 @@
 #!/bin/sh
 # ============================================
-# PostgreSQL 備份腳本
-# 支援: 完全備份(W.) / 增量備份(D.) / 異地備份(Mo.)
+# PostgreSQL 邏輯備份腳本 (pg_dump)
+# 支援: 完全備份 / 增量備份 / 異地備份
 # 壓縮: gzip (DEFLATE)
 # 加密: openssl AES-256-CBC
 # ============================================
@@ -23,7 +23,7 @@ FULL_BACKUP_RETENTION_DAYS="${FULL_BACKUP_RETENTION_DAYS:-30}"
 INCREMENTAL_BACKUP_RETENTION_DAYS="${INCREMENTAL_BACKUP_RETENTION_DAYS:-7}"
 REMOTE_BACKUP_RETENTION_DAYS="${REMOTE_BACKUP_RETENTION_DAYS:-90}"
 BACKUP_COMPRESSION_ENABLED="${BACKUP_COMPRESSION_ENABLED:-true}"
-BACKUP_ENCRYPTION_ENABLED="${BACKUP_ENCRYPTION_ENABLED:-true}"
+BACKUP_ENCRYPTION_ENABLED="${BACKUP_ENCRYPTION_ENABLED:-false}"
 
 # 目錄結構
 FULL_BACKUP_DIR="$BACKUP_DIR/full"
@@ -74,7 +74,6 @@ do_backup() {
     
     local ext=$(get_file_extension)
     local backup_file="${output_dir}/${backup_type}_${TIMESTAMP}${ext}"
-    local temp_file="${output_dir}/${backup_type}_${TIMESTAMP}.sql"
     
     log "Starting $backup_type backup..."
     log "  Database: $POSTGRES_DATABASE"
@@ -136,13 +135,13 @@ backup_full() {
     log "===== FULL BACKUP COMPLETE ====="
 }
 
-# 增量備份 (Daily)
+# 增量備份 (Daily) - 使用 pg_dump 的 schema 變更追蹤
 backup_incremental() {
     log "===== INCREMENTAL BACKUP START ====="
     validate_config
     
-    # 增量備份: 僅備份 schema 和最近變更的資料
-    # 使用 --data-only 搭配時間戳記欄位過濾 (若資料表有的話)
+    # 邏輯增量: 完整 dump (pg_dump 不支援真正的增量)
+    # 建議搭配 WAL 物理備份實現真正增量
     local backup_file=$(do_backup "incremental" "$INCREMENTAL_BACKUP_DIR" "--format=plain --no-owner --no-acl")
     
     # 清理過期備份
@@ -190,14 +189,29 @@ backup_remote() {
     log "===== REMOTE BACKUP COMPLETE ====="
 }
 
+# 列出可用備份
+list_backups() {
+    echo "===== AVAILABLE BACKUPS ====="
+    echo ""
+    echo "=== Full Backups ==="
+    ls -lh "$FULL_BACKUP_DIR" 2>/dev/null || echo "  (none)"
+    echo ""
+    echo "=== Incremental Backups ==="
+    ls -lh "$INCREMENTAL_BACKUP_DIR" 2>/dev/null || echo "  (none)"
+    echo ""
+    echo "=== Remote Backups ==="
+    ls -lh "$REMOTE_BACKUP_DIR" 2>/dev/null || echo "  (none)"
+}
+
 # 顯示使用說明
 usage() {
-    echo "Usage: $0 [full|incremental|remote]"
+    echo "Usage: $0 [full|incremental|remote|list]"
     echo ""
     echo "Commands:"
     echo "  full        - Full database backup (Weekly)"
     echo "  incremental - Incremental backup (Daily)"
     echo "  remote      - Remote/offsite backup (Monthly)"
+    echo "  list        - List available backups"
     echo ""
     echo "Environment Variables:"
     echo "  CONFIG_FILE - Path to config file (default: /scripts/config/.env)"
@@ -214,6 +228,9 @@ case "${1:-}" in
         ;;
     remote)
         backup_remote
+        ;;
+    list)
+        list_backups
         ;;
     *)
         usage

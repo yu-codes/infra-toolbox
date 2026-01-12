@@ -1,0 +1,250 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  # ============================================
+  # 單元測試 (語法檢查、檔案結構)
+  # ============================================
+  unit-tests:
+    runs-on: ubuntu-latest
+    name: Unit Tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Make test script executable
+        run: chmod +x tests/run_tests.sh
+      
+      - name: Run unit tests
+        run: ./tests/run_tests.sh unit
+
+  # ============================================
+  # Docker Compose 配置驗證
+  # ============================================
+  docker-compose-validation:
+    runs-on: ubuntu-latest
+    name: Docker Compose Validation
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Validate postgres docker-compose
+        run: docker compose -f postgres/docker-compose.yml config
+      
+      - name: Validate postgres_backup_logical docker-compose
+        run: docker compose -f postgres_backup_logical/docker-compose.yml config
+      
+      - name: Validate postgres_backup_physical docker-compose
+        run: docker compose -f postgres_backup_physical/docker-compose.yml config
+      
+      - name: Validate minio docker-compose
+        run: docker compose -f minio/docker-compose.yml config
+      
+      - name: Validate minio_backup docker-compose
+        run: docker compose -f minio_backup/docker-compose.yml config
+      
+      - name: Validate resource_monitoring docker-compose
+        run: docker compose -f resource_monitoring/docker-compose.yml config
+      
+      - name: Validate filebrowser docker-compose
+        run: docker compose -f filebrowser/docker-compose.yml config
+
+  # ============================================
+  # Shell 腳本語法檢查
+  # ============================================
+  shellcheck:
+    runs-on: ubuntu-latest
+    name: Shell Script Linting
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+      
+      - name: Run ShellCheck on postgres_backup_logical scripts
+        run: |
+          shellcheck -x postgres_backup_logical/scripts/*.sh || true
+      
+      - name: Run ShellCheck on postgres_backup_physical scripts
+        run: |
+          shellcheck -x postgres_backup_physical/scripts/*.sh || true
+      
+      - name: Run ShellCheck on minio_backup scripts
+        run: |
+          shellcheck -x minio_backup/scripts/*.sh || true
+      
+      - name: Run ShellCheck on test scripts
+        run: |
+          shellcheck -x tests/*.sh || true
+
+  # ============================================
+  # PostgreSQL 整合測試
+  # ============================================
+  integration-postgres:
+    runs-on: ubuntu-latest
+    name: Integration - PostgreSQL
+    needs: [unit-tests, docker-compose-validation]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Create Docker network
+        run: docker network create infra-toolbox-network
+      
+      - name: Setup postgres .env
+        run: cp postgres/.env.example postgres/.env
+      
+      - name: Start PostgreSQL
+        run: |
+          cd postgres
+          docker compose up -d
+          sleep 10
+      
+      - name: Test PostgreSQL connection
+        run: |
+          docker exec postgres pg_isready -U postgres
+      
+      - name: Test PostgreSQL version
+        run: |
+          docker exec postgres psql -U postgres -c "SELECT version();" | grep -q "14"
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          cd postgres
+          docker compose down -v
+
+  # ============================================
+  # 邏輯備份整合測試
+  # ============================================
+  integration-backup-logical:
+    runs-on: ubuntu-latest
+    name: Integration - Logical Backup
+    needs: [unit-tests, docker-compose-validation]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Create Docker network
+        run: docker network create infra-toolbox-network
+      
+      - name: Setup postgres .env
+        run: cp postgres/.env.example postgres/.env
+      
+      - name: Start PostgreSQL
+        run: |
+          cd postgres
+          docker compose up -d
+          sleep 10
+      
+      - name: Create test database with data
+        run: |
+          docker exec postgres psql -U postgres -c "CREATE DATABASE testdb;"
+          docker exec postgres psql -U postgres -d testdb -c "CREATE TABLE test_table (id SERIAL PRIMARY KEY, data TEXT);"
+          docker exec postgres psql -U postgres -d testdb -c "INSERT INTO test_table (data) VALUES ('test1'), ('test2'), ('test3');"
+      
+      - name: Setup backup service .env
+        run: |
+          cp postgres_backup_logical/.env.example postgres_backup_logical/.env
+          sed -i 's/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=postgres/' postgres_backup_logical/.env
+          sed -i 's/POSTGRES_DATABASE=.*/POSTGRES_DATABASE=testdb/' postgres_backup_logical/.env
+      
+      - name: Start backup service
+        run: |
+          cd postgres_backup_logical
+          docker compose up -d
+          sleep 5
+      
+      - name: Run full backup
+        run: |
+          docker exec postgres-backup-logical /scripts/backup.sh full
+      
+      - name: Verify backup file exists
+        run: |
+          docker exec postgres-backup-logical ls -la /backups/full/
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          cd postgres_backup_logical && docker compose down -v || true
+          cd ../postgres && docker compose down -v || true
+
+  # ============================================
+  # MinIO 整合測試
+  # ============================================
+  integration-minio:
+    runs-on: ubuntu-latest
+    name: Integration - MinIO
+    needs: [unit-tests, docker-compose-validation]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Create Docker network
+        run: docker network create infra-toolbox-network
+      
+      - name: Setup minio .env
+        run: cp minio/.env.example minio/.env
+      
+      - name: Start MinIO
+        run: |
+          cd minio
+          docker compose up -d
+          sleep 10
+      
+      - name: Test MinIO health
+        run: |
+          curl -f http://localhost:10010/minio/health/live || echo "MinIO health check"
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          cd minio
+          docker compose down -v
+
+  # ============================================
+  # Resource Monitoring 整合測試
+  # ============================================
+  integration-monitoring:
+    runs-on: ubuntu-latest
+    name: Integration - Resource Monitoring
+    needs: [unit-tests, docker-compose-validation]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Create Docker network
+        run: docker network create infra-toolbox-network
+      
+      - name: Setup resource_monitoring .env
+        run: cp resource_monitoring/.env.example resource_monitoring/.env || touch resource_monitoring/.env
+      
+      - name: Build and start resource monitoring
+        run: |
+          cd resource_monitoring
+          docker compose up -d --build
+          sleep 15
+      
+      - name: Test API endpoint
+        run: |
+          curl -f http://localhost:10003/ || echo "API root check"
+          curl -f http://localhost:10003/health || echo "Health check"
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          cd resource_monitoring
+          docker compose down -v

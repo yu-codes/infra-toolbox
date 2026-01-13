@@ -1,11 +1,10 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:14-alpine
     container_name: postgres
     env_file:
-      - ./.env
+      - path: ./.env
+        required: false
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -15,7 +14,9 @@ services:
     volumes:
       - ./data:/var/lib/postgresql/data
       - ./backups:/backups
-    # 啟用 WAL 歸檔模式 (支援 PITR)
+      - ./wal_archive:/postgres_backups/wal
+      - /var/run/docker.sock:/var/run/docker.sock
+    # 啟用 WAL 歸檔模式 (支援 PITR 和異地備份)
     command:
       - postgres
       - -c
@@ -23,7 +24,7 @@ services:
       - -c
       - archive_mode=on
       - -c
-      - archive_command=cp %p /backups/wal/%f
+      - 'archive_command=mkdir -p /backups/wal && cp %p /backups/wal/%f && cp %p /postgres_backups/wal/%f'
       - -c
       - max_wal_senders=3
     restart: unless-stopped

@@ -43,8 +43,8 @@ services:
     ports:
       - "10003:8000"
     environment:
-      - NODE_EXPORTER_URL=http://node_exporter:9100
-      - CADVISOR_URL=http://cadvisor:8080
+      NODE_EXPORTER_URL: ${NODE_EXPORTER_URL:-http://node_exporter:9100}
+      CADVISOR_URL: ${CADVISOR_URL:-http://cadvisor:8080}
     depends_on:
       - node_exporter
       - cadvisor

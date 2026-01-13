@@ -3,7 +3,8 @@ services:
     image: minio/mc:latest
     container_name: minio-backup
     env_file:
-      - ./.env
+      - path: ./.env
+        required: false
     volumes:
       - ./scripts:/scripts:ro
       - ./backups:/backups

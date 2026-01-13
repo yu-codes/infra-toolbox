@@ -1,11 +1,10 @@
-version: '3.8'
-
 services:
   postgres-backup-logical:
     image: postgres:14-alpine
     container_name: postgres-backup-logical
     env_file:
-      - ./.env
+      - path: ./.env
+        required: false
     volumes:
       - ./scripts:/scripts:ro
       - ./backups:/backups

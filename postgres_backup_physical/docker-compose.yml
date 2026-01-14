@@ -10,6 +10,10 @@ services:
       - ./backups:/backups
       # WAL 歸檔目錄 (可連接到 postgres 的備份目錄)
       - ./wal_archive:/postgres_backups/wal
+    # 支援連接宿主機上的 PostgreSQL (非 Docker 運行)
+    # 若 POSTGRES_CONNECTION_MODE=host，使用 extra_hosts 允許連接宿主機
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -17,6 +21,11 @@ services:
         echo "============================================"
         echo "PostgreSQL Physical Backup Service Ready"
         echo "============================================"
+        echo ""
+        echo "Connection Modes:"
+        echo "  docker: Connect to PostgreSQL in Docker network"
+        echo "  host:   Connect to PostgreSQL on host machine"
+        echo "          (use host.docker.internal as POSTGRES_HOST)"
         echo ""
         echo "=== Backup Commands ==="
         echo "  Base Backup: docker exec postgres-backup-physical /scripts/backup.sh base"

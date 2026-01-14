@@ -4,8 +4,9 @@ services:
     image: prom/node-exporter:latest
     container_name: node_exporter
     restart: unless-stopped
-    ports:
-      - "10001:9100"
+    # 僅內部網路使用，不對外暴露端口
+    expose:
+      - "9100"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -23,8 +24,9 @@ services:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
     restart: unless-stopped
-    ports:
-      - "10002:8080"
+    # 僅內部網路使用，不對外暴露端口
+    expose:
+      - "8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -45,6 +47,13 @@ services:
     environment:
       NODE_EXPORTER_URL: ${NODE_EXPORTER_URL:-http://node_exporter:9100}
       CADVISOR_URL: ${CADVISOR_URL:-http://cadvisor:8080}
+      # CPU 採樣間隔 (分鐘)
+      CPU_SAMPLE_INTERVAL_MINUTES: ${CPU_SAMPLE_INTERVAL_MINUTES:-1}
+      # 資料儲存目錄
+      DATA_DIR: /app/data
+    volumes:
+      # CPU 採樣資料持久化
+      - ./data:/app/data
     depends_on:
       - node_exporter
       - cadvisor

@@ -1,14 +1,31 @@
 #!/bin/sh
-# ============================================
-# MinIO 還原腳本
-# ============================================
+# ============================================================================
+# MinIO 還原腳本 (使用 mc - MinIO 官方客戶端工具)
+#
+# 這個腳本用於還原由 backup.sh 建立的備份檔案。
+# 還原流程是備份的逆向操作:
+# 1. 解密: 使用 OpenSSL 解密 (若備份已加密)
+# 2. 解壓縮: 使用 tar/gzip 解壓 (若備份已壓縮)
+# 3. 上傳: 使用 mc cp --recursive 遞迴上傳所有檔案
+#
+# 參考文獻:
+# - MinIO Client: https://min.io/docs/minio/linux/reference/minio-mc.html
+# ============================================================================
 
 set -e
 
-# 載入配置
+# 載入配置 (優先使用環境變數，其次使用配置檔)
 CONFIG_FILE="${CONFIG_FILE:-/scripts/config/.env}"
 if [ -f "$CONFIG_FILE" ]; then
-    export $(grep -v '^#' "$CONFIG_FILE" | xargs)
+    while IFS='=' read -r key value; do
+        case "$key" in
+            '#'*|'') continue ;;
+        esac
+        eval "current_val=\${$key:-}"
+        if [ -z "$current_val" ]; then
+            export "$key=$value"
+        fi
+    done < "$CONFIG_FILE"
 fi
 
 # 還原配置

@@ -1,21 +1,24 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
     branches: [ main, master, develop ]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [ main, master ]
+
+env:
+  TEST_NETWORK: infra-toolbox-network
 
 jobs:
   # ============================================
-  # 單元測試 (語法檢查、檔案結構)
+  # 單元測試 - 語法檢查和檔案驗證
   # ============================================
   unit-tests:
-    runs-on: ubuntu-latest
     name: Unit Tests
+    runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
       
       - name: Make test script executable
@@ -25,226 +28,493 @@ jobs:
         run: ./tests/run_tests.sh unit
 
   # ============================================
-  # Docker Compose 配置驗證
+  # Docker Compose 語法驗證
   # ============================================
-  docker-compose-validation:
-    runs-on: ubuntu-latest
+  docker-compose-validate:
     name: Docker Compose Validation
+    runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
       
-      - name: Validate postgres docker-compose
-        run: docker compose -f postgres/docker-compose.yml config
-      
-      - name: Validate postgres_backup_logical docker-compose
-        run: docker compose -f postgres_backup_logical/docker-compose.yml config
-      
-      - name: Validate postgres_backup_physical docker-compose
-        run: docker compose -f postgres_backup_physical/docker-compose.yml config
-      
-      - name: Validate minio docker-compose
-        run: docker compose -f minio/docker-compose.yml config
-      
-      - name: Validate minio_backup docker-compose
-        run: docker compose -f minio_backup/docker-compose.yml config
-      
-      - name: Validate resource_monitoring docker-compose
-        run: docker compose -f resource_monitoring/docker-compose.yml config
-      
-      - name: Validate filebrowser docker-compose
-        run: docker compose -f filebrowser/docker-compose.yml config
+      - name: Validate all docker-compose files
+        run: |
+          for compose_file in $(find . -name "docker-compose.yml" -o -name "docker-compose.yaml"); do
+            echo "Validating: $compose_file"
+            docker compose -f "$compose_file" config > /dev/null
+            if [ $? -eq 0 ]; then
+              echo "✓ $compose_file is valid"
+            else
+              echo "✗ $compose_file is invalid"
+              exit 1
+            fi
+          done
+          echo "All docker-compose files are valid!"
 
   # ============================================
-  # Shell 腳本語法檢查
+  # Shell 腳本 Lint 檢查
   # ============================================
   shellcheck:
+    name: ShellCheck Lint
     runs-on: ubuntu-latest
-    name: Shell Script Linting
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
       
       - name: Install ShellCheck
         run: sudo apt-get install -y shellcheck
       
-      - name: Run ShellCheck on postgres_backup_logical scripts
+      - name: Run ShellCheck
         run: |
-          shellcheck -x postgres_backup_logical/scripts/*.sh || true
-      
-      - name: Run ShellCheck on postgres_backup_physical scripts
-        run: |
-          shellcheck -x postgres_backup_physical/scripts/*.sh || true
-      
-      - name: Run ShellCheck on minio_backup scripts
-        run: |
-          shellcheck -x minio_backup/scripts/*.sh || true
-      
-      - name: Run ShellCheck on test scripts
-        run: |
-          shellcheck -x tests/*.sh || true
+          echo "Checking shell scripts..."
+          find . -name "*.sh" -not -path "./postgres/data/*" -not -path "./minio/data/*" | while read script; do
+            echo "Checking: $script"
+            shellcheck -x "$script" || true
+          done
+        continue-on-error: true
 
   # ============================================
-  # PostgreSQL 整合測試
+  # 整合測試 - Docker 服務啟動測試
   # ============================================
-  integration-postgres:
+  integration-tests:
+    name: Integration Tests
     runs-on: ubuntu-latest
-    name: Integration - PostgreSQL
-    needs: [unit-tests, docker-compose-validation]
+    needs: [unit-tests, docker-compose-validate]
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Create Docker network
+        run: docker network create $TEST_NETWORK || true
+      
+      - name: Make test script executable
+        run: chmod +x tests/run_tests.sh
+      
+      - name: Run integration tests
+        run: ./tests/run_tests.sh integration
+
+  # ============================================
+  # PostgreSQL 邏輯備份演練測試
+  # ============================================
+  drill-postgres-logical:
+    name: Drill - PostgreSQL Logical Backup
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    
+    steps:
+      - name: Checkout repository
         uses: actions/checkout@v4
       
       - name: Create Docker network
-        run: docker network create infra-toolbox-network
+        run: docker network create $TEST_NETWORK || true
       
-      - name: Setup postgres .env
-        run: cp postgres/.env.example postgres/.env
+      - name: Make scripts executable
+        run: find . -name "*.sh" -exec chmod +x {} \;
       
-      - name: Start PostgreSQL
+      - name: Start PostgreSQL service
         run: |
           cd postgres
+          echo "POSTGRES_USER=postgres" > .env
+          echo "POSTGRES_PASSWORD=testpassword123" >> .env
+          echo "POSTGRES_DB=postgres" >> .env
           docker compose up -d
-          sleep 10
+          
+          echo "Waiting for PostgreSQL..."
+          for i in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U postgres 2>/dev/null; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            sleep 2
+          done
       
-      - name: Test PostgreSQL connection
-        run: |
-          docker exec postgres pg_isready -U postgres
-      
-      - name: Test PostgreSQL version
-        run: |
-          docker exec postgres psql -U postgres -c "SELECT version();" | grep -q "14"
-      
-      - name: Cleanup
-        if: always()
-        run: |
-          cd postgres
-          docker compose down -v
-
-  # ============================================
-  # 邏輯備份整合測試
-  # ============================================
-  integration-backup-logical:
-    runs-on: ubuntu-latest
-    name: Integration - Logical Backup
-    needs: [unit-tests, docker-compose-validation]
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Create Docker network
-        run: docker network create infra-toolbox-network
-      
-      - name: Setup postgres .env
-        run: cp postgres/.env.example postgres/.env
-      
-      - name: Start PostgreSQL
+      - name: Create test data
         run: |
           cd postgres
-          docker compose up -d
-          sleep 10
+          docker compose exec -T postgres psql -U postgres -c "CREATE DATABASE drill_test_db;" || true
+          docker compose exec -T postgres psql -U postgres -d drill_test_db -c "
+            CREATE TABLE drill_test (id SERIAL PRIMARY KEY, data TEXT, hash VARCHAR(64));
+            INSERT INTO drill_test (data, hash) VALUES 
+              ('test1', md5('test1')),
+              ('test2', md5('test2')),
+              ('verification', md5('verify'));
+          "
+          
+          echo "Original count:"
+          docker compose exec -T postgres psql -U postgres -d drill_test_db -t -c "SELECT COUNT(*) FROM drill_test;"
       
-      - name: Create test database with data
-        run: |
-          docker exec postgres psql -U postgres -c "CREATE DATABASE testdb;"
-          docker exec postgres psql -U postgres -d testdb -c "CREATE TABLE test_table (id SERIAL PRIMARY KEY, data TEXT);"
-          docker exec postgres psql -U postgres -d testdb -c "INSERT INTO test_table (data) VALUES ('test1'), ('test2'), ('test3');"
-      
-      - name: Setup backup service .env
-        run: |
-          cp postgres_backup_logical/.env.example postgres_backup_logical/.env
-          sed -i 's/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=postgres/' postgres_backup_logical/.env
-          sed -i 's/POSTGRES_DATABASE=.*/POSTGRES_DATABASE=testdb/' postgres_backup_logical/.env
-      
-      - name: Start backup service
+      - name: Start backup service and execute backup
         run: |
           cd postgres_backup_logical
+          cat > .env << 'EOF'
+          POSTGRES_HOST=postgres
+          POSTGRES_PORT=5432
+          POSTGRES_USERNAME=postgres
+          POSTGRES_PASSWORD=testpassword123
+          POSTGRES_DATABASE=drill_test_db
+          BACKUP_COMPRESSION_ENABLED=true
+          BACKUP_ENCRYPTION_ENABLED=false
+          EOF
+          
           docker compose up -d
-          sleep 5
-      
-      - name: Run full backup
-        run: |
-          docker exec postgres-backup-logical /scripts/backup.sh full
-      
-      - name: Verify backup file exists
-        run: |
+          sleep 3
+          
+          echo "Executing backup..."
+          docker exec postgres-backup-logical sh /scripts/backup.sh full
+          
+          echo "Backup files:"
           docker exec postgres-backup-logical ls -la /backups/full/
       
+      - name: Simulate disaster and restore
+        run: |
+          cd postgres
+          docker compose exec -T postgres psql -U postgres -d drill_test_db -c "DELETE FROM drill_test;"
+          
+          echo "After delete:"
+          docker compose exec -T postgres psql -U postgres -d drill_test_db -t -c "SELECT COUNT(*) FROM drill_test;"
+          
+          cd ../postgres_backup_logical
+          backup_file=$(docker exec postgres-backup-logical ls /backups/full/ | grep "^full_" | head -1)
+          echo "Restoring from: $backup_file"
+          docker exec postgres-backup-logical sh /scripts/restore.sh restore "/backups/full/$backup_file"
+      
+      - name: Verify restored data
+        run: |
+          cd postgres
+          restored_count=$(docker compose exec -T postgres psql -U postgres -d drill_test_db -t -c "SELECT COUNT(*) FROM drill_test;" | tr -d ' ')
+          echo "Restored count: $restored_count"
+          
+          if [ "$restored_count" = "3" ]; then
+            echo "✓ Data restore verified!"
+          else
+            echo "✗ Data restore failed!"
+            exit 1
+          fi
+      
       - name: Cleanup
         if: always()
         run: |
-          cd postgres_backup_logical && docker compose down -v || true
-          cd ../postgres && docker compose down -v || true
+          cd postgres && docker compose down -v || true
+          cd ../postgres_backup_logical && docker compose down -v || true
 
   # ============================================
-  # MinIO 整合測試
+  # PostgreSQL 物理備份演練測試
   # ============================================
-  integration-minio:
+  drill-postgres-physical:
+    name: Drill - PostgreSQL Physical Backup
     runs-on: ubuntu-latest
-    name: Integration - MinIO
-    needs: [unit-tests, docker-compose-validation]
+    needs: integration-tests
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
       
       - name: Create Docker network
-        run: docker network create infra-toolbox-network
+        run: docker network create $TEST_NETWORK || true
       
-      - name: Setup minio .env
-        run: cp minio/.env.example minio/.env
+      - name: Make scripts executable
+        run: find . -name "*.sh" -exec chmod +x {} \;
       
-      - name: Start MinIO
+      - name: Start PostgreSQL service
         run: |
-          cd minio
+          cd postgres
+          echo "POSTGRES_USER=postgres" > .env
+          echo "POSTGRES_PASSWORD=testpassword123" >> .env
+          echo "POSTGRES_DB=postgres" >> .env
           docker compose up -d
-          sleep 10
+          
+          echo "Waiting for PostgreSQL..."
+          for i in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U postgres 2>/dev/null; then
+              echo "PostgreSQL is ready"
+              break
+            fi
+            sleep 2
+          done
       
-      - name: Test MinIO health
+      - name: Start physical backup service
         run: |
-          curl -f http://localhost:10010/minio/health/live || echo "MinIO health check"
+          cd postgres_backup_physical
+          cat > .env << 'EOF'
+          POSTGRES_HOST=postgres
+          POSTGRES_PORT=5432
+          POSTGRES_USERNAME=postgres
+          POSTGRES_PASSWORD=testpassword123
+          BASE_BACKUP_COMPRESSION=true
+          BACKUP_ENCRYPTION_ENABLED=false
+          EOF
+          
+          docker compose up -d
+          sleep 3
+      
+      - name: Test backup status command
+        run: |
+          cd postgres_backup_physical
+          echo "Checking backup status..."
+          docker exec postgres-backup-physical sh /scripts/backup.sh status || true
+      
+      - name: Test list command
+        run: |
+          cd postgres_backup_physical
+          echo "Listing available backups..."
+          docker exec postgres-backup-physical sh /scripts/restore.sh list || true
       
       - name: Cleanup
         if: always()
         run: |
-          cd minio
-          docker compose down -v
+          cd postgres && docker compose down -v || true
+          cd ../postgres_backup_physical && docker compose down -v || true
 
   # ============================================
-  # Resource Monitoring 整合測試
+  # MinIO 備份演練測試
   # ============================================
-  integration-monitoring:
+  drill-minio:
+    name: Drill - MinIO Backup
     runs-on: ubuntu-latest
-    name: Integration - Resource Monitoring
-    needs: [unit-tests, docker-compose-validation]
+    needs: integration-tests
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
       
       - name: Create Docker network
-        run: docker network create infra-toolbox-network
+        run: docker network create $TEST_NETWORK || true
       
-      - name: Setup resource_monitoring .env
-        run: cp resource_monitoring/.env.example resource_monitoring/.env || touch resource_monitoring/.env
+      - name: Make scripts executable
+        run: find . -name "*.sh" -exec chmod +x {} \;
       
-      - name: Build and start resource monitoring
+      - name: Start MinIO service
         run: |
-          cd resource_monitoring
-          docker compose up -d --build
-          sleep 15
+          cd minio
+          echo "MINIO_ROOT_USER=minioadmin" > .env
+          echo "MINIO_ROOT_PASSWORD=minioadmin123" >> .env
+          docker compose up -d
+          
+          echo "Waiting for MinIO..."
+          for i in {1..30}; do
+            if docker compose exec -T minio mc alias set local http://localhost:9000 minioadmin minioadmin123 2>/dev/null; then
+              echo "MinIO is ready"
+              break
+            fi
+            sleep 2
+          done
       
-      - name: Test API endpoint
+      - name: Create test data
         run: |
-          curl -f http://localhost:10003/ || echo "API root check"
-          curl -f http://localhost:10003/health || echo "Health check"
+          cd minio
+          docker compose exec -T minio sh -c "
+            mc mb local/drill-test-bucket || true
+            echo 'Test file 1' > /tmp/test1.txt
+            echo 'Test file 2' > /tmp/test2.txt
+            echo '{\"test\": \"drill\"}' > /tmp/test.json
+            mc cp /tmp/test1.txt local/drill-test-bucket/
+            mc cp /tmp/test2.txt local/drill-test-bucket/
+            mc cp /tmp/test.json local/drill-test-bucket/
+          "
+          
+          echo "Original file count:"
+          docker compose exec -T minio mc ls local/drill-test-bucket/ | wc -l
+      
+      - name: Start backup service and execute backup
+        run: |
+          cd minio_backup
+          cat > .env << 'EOF'
+          MINIO_ENDPOINT=minio:9000
+          MINIO_ACCESS_KEY=minioadmin
+          MINIO_SECRET_KEY=minioadmin123
+          BACKUP_BUCKET=drill-test-bucket
+          BACKUP_COMPRESSION_ENABLED=true
+          BACKUP_ENCRYPTION_ENABLED=false
+          EOF
+          
+          docker compose up -d
+          
+          echo "Waiting for mc installation..."
+          for i in {1..40}; do
+            if docker exec minio-backup mc --version 2>/dev/null; then
+              echo "mc installed"
+              break
+            fi
+            sleep 3
+          done
+          
+          echo "Executing backup..."
+          docker exec minio-backup sh /scripts/backup.sh
+          
+          echo "Backup files:"
+          docker exec minio-backup ls -la /backups/
+      
+      - name: Simulate disaster and restore
+        run: |
+          cd minio
+          docker compose exec -T minio mc rm --recursive --force local/drill-test-bucket/ || true
+          
+          echo "After delete:"
+          docker compose exec -T minio mc ls local/drill-test-bucket/ | wc -l || echo "0"
+          
+          cd ../minio_backup
+          backup_file=$(docker exec minio-backup ls /backups/ | grep "^minio_backup_" | head -1)
+          echo "Restoring from: $backup_file"
+          docker exec minio-backup sh /scripts/restore.sh restore "/backups/$backup_file"
+      
+      - name: Verify restored data
+        run: |
+          cd minio
+          restored_count=$(docker compose exec -T minio mc ls local/drill-test-bucket/ | wc -l | tr -d ' ')
+          echo "Restored count: $restored_count"
+          
+          if [ "$restored_count" = "3" ]; then
+            echo "✓ Data restore verified!"
+          else
+            echo "✗ Data restore failed!"
+            exit 1
+          fi
       
       - name: Cleanup
         if: always()
         run: |
-          cd resource_monitoring
-          docker compose down -v
+          cd minio && docker compose down -v || true
+          cd ../minio_backup && docker compose down -v || true
+
+  # ============================================
+  # 加密功能測試
+  # ============================================
+  encryption-test:
+    name: Encryption Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Test encryption/decryption
+        run: |
+          test_password="test_encryption_password_123"
+          test_data="Sensitive data for encryption test"
+          
+          echo "$test_data" > /tmp/test_encrypt.txt
+          
+          # 加密
+          openssl enc -aes-256-cbc -salt -pbkdf2 \
+            -pass pass:"$test_password" \
+            -in /tmp/test_encrypt.txt \
+            -out /tmp/test_encrypt.txt.enc
+          
+          # 解密
+          openssl enc -aes-256-cbc -d -pbkdf2 \
+            -pass pass:"$test_password" \
+            -in /tmp/test_encrypt.txt.enc \
+            -out /tmp/test_decrypt.txt
+          
+          # 驗證
+          if diff /tmp/test_encrypt.txt /tmp/test_decrypt.txt; then
+            echo "✓ Encryption/decryption test passed"
+          else
+            echo "✗ Encryption/decryption test failed"
+            exit 1
+          fi
+          
+          # 測試錯誤密碼
+          if ! openssl enc -aes-256-cbc -d -pbkdf2 \
+            -pass pass:"wrong_password" \
+            -in /tmp/test_encrypt.txt.enc \
+            -out /dev/null 2>/dev/null; then
+            echo "✓ Wrong password rejection test passed"
+          else
+            echo "✗ Wrong password should have failed"
+            exit 1
+          fi
+
+  # ============================================
+  # 文件檢查
+  # ============================================
+  documentation-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Check README files
+        run: |
+          services="postgres postgres_backup_logical postgres_backup_physical minio minio_backup filebrowser resource_monitoring"
+          missing=0
+          
+          for service in $services; do
+            if [ ! -f "$service/README.md" ]; then
+              echo "✗ Missing README.md in $service"
+              missing=$((missing + 1))
+            else
+              echo "✓ Found README.md in $service"
+            fi
+          done
+          
+          if [ $missing -gt 0 ]; then
+            echo "Missing $missing README files"
+            exit 1
+          fi
+      
+      - name: Check .env.example files
+        run: |
+          services="postgres postgres_backup_logical postgres_backup_physical minio minio_backup filebrowser resource_monitoring"
+          missing=0
+          
+          for service in $services; do
+            if [ ! -f "$service/.env.example" ]; then
+              echo "✗ Missing .env.example in $service"
+              missing=$((missing + 1))
+            else
+              echo "✓ Found .env.example in $service"
+            fi
+          done
+          
+          if [ $missing -gt 0 ]; then
+            echo "Missing $missing .env.example files"
+            exit 1
+          fi
+
+  # ============================================
+  # 最終狀態報告
+  # ============================================
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, drill-postgres-logical, drill-postgres-physical, drill-minio, encryption-test, documentation-check]
+    if: always()
+    
+    steps:
+      - name: Check all jobs status
+        run: |
+          echo "============================================"
+          echo "           CI Pipeline Summary"
+          echo "============================================"
+          echo ""
+          echo "Unit Tests:              ${{ needs.unit-tests.result }}"
+          echo "Integration Tests:       ${{ needs.integration-tests.result }}"
+          echo "PostgreSQL Logical:      ${{ needs.drill-postgres-logical.result }}"
+          echo "PostgreSQL Physical:     ${{ needs.drill-postgres-physical.result }}"
+          echo "MinIO Drill:             ${{ needs.drill-minio.result }}"
+          echo "Encryption Test:         ${{ needs.encryption-test.result }}"
+          echo "Documentation:           ${{ needs.documentation-check.result }}"
+          echo ""
+          
+          # 檢查是否有失敗
+          failed=0
+          [ "${{ needs.unit-tests.result }}" = "failure" ] && failed=1
+          [ "${{ needs.integration-tests.result }}" = "failure" ] && failed=1
+          [ "${{ needs.drill-postgres-logical.result }}" = "failure" ] && failed=1
+          [ "${{ needs.drill-postgres-physical.result }}" = "failure" ] && failed=1
+          [ "${{ needs.drill-minio.result }}" = "failure" ] && failed=1
+          [ "${{ needs.encryption-test.result }}" = "failure" ] && failed=1
+          [ "${{ needs.documentation-check.result }}" = "failure" ] && failed=1
+          
+          if [ $failed -eq 1 ]; then
+            echo "❌ Some checks failed!"
+            exit 1
+          else
+            echo "✅ All checks passed!"
+          fi

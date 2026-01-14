@@ -5,9 +5,28 @@ services:
     env_file:
       - path: ./.env
         required: false
+    environment:
+      # 傳遞環境變數給腳本
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_USERNAME: ${POSTGRES_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_DATABASE: ${POSTGRES_DATABASE:-}
+      POSTGRES_CONNECTION_MODE: ${POSTGRES_CONNECTION_MODE:-docker}
+      BACKUP_COMPRESSION_ENABLED: ${BACKUP_COMPRESSION_ENABLED:-true}
+      BACKUP_ENCRYPTION_ENABLED: ${BACKUP_ENCRYPTION_ENABLED:-false}
+      BACKUP_ENCRYPTION_PASSWORD: ${BACKUP_ENCRYPTION_PASSWORD:-}
+      BACKUP_ENCRYPTION_ALGORITHM: ${BACKUP_ENCRYPTION_ALGORITHM:-aes-256-cbc}
+      FULL_BACKUP_RETENTION_DAYS: ${FULL_BACKUP_RETENTION_DAYS:-30}
+      INCREMENTAL_BACKUP_RETENTION_DAYS: ${INCREMENTAL_BACKUP_RETENTION_DAYS:-7}
+      REMOTE_BACKUP_RETENTION_DAYS: ${REMOTE_BACKUP_RETENTION_DAYS:-90}
     volumes:
       - ./scripts:/scripts:ro
       - ./backups:/backups
+    # 支援連接宿主機上的 PostgreSQL (非 Docker 運行)
+    # 若 POSTGRES_CONNECTION_MODE=host，使用 extra_hosts 允許連接宿主機
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -15,6 +34,11 @@ services:
         echo "============================================"
         echo "PostgreSQL Logical Backup Service Ready"
         echo "============================================"
+        echo ""
+        echo "Connection Modes:"
+        echo "  docker: Connect to PostgreSQL in Docker network"
+        echo "  host:   Connect to PostgreSQL on host machine"
+        echo "          (use host.docker.internal as POSTGRES_HOST)"
         echo ""
         echo "=== Backup Commands ==="
         echo "  Full:        docker exec postgres-backup-logical /scripts/backup.sh full"

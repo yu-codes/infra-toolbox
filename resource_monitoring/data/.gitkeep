@@ -1,0 +1,4 @@
+# This directory stores CPU sampling data
+# Files:
+#   - cpu_metrics.json: Host CPU metrics
+#   - container_cpu_metrics.json: Container CPU metrics

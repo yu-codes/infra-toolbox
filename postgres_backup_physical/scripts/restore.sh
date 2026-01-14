@@ -19,6 +19,10 @@ WAL_BACKUP_DIR="$BACKUP_DIR/wal"
 RESTORE_STAGING_DIR="${RESTORE_STAGING_DIR:-$BACKUP_DIR/restore_staging}"
 LOG_DIR="$BACKUP_DIR/logs"
 
+# 加密配置
+BACKUP_ENCRYPTION_ENABLED="${BACKUP_ENCRYPTION_ENABLED:-false}"
+BACKUP_ENCRYPTION_ALGORITHM="${BACKUP_ENCRYPTION_ALGORITHM:-aes-256-cbc}"
+
 mkdir -p "$LOG_DIR" "$RESTORE_STAGING_DIR"
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -97,6 +101,23 @@ prepare_restore() {
         error_exit "Base backup not found: $base_backup"
     fi
     
+    # 讀取備份資訊以檢測加密
+    local is_encrypted="false"
+    if [ -f "$base_backup/backup_info" ]; then
+        is_encrypted=$(grep "^BACKUP_ENCRYPTION=" "$base_backup/backup_info" | cut -d= -f2 || echo "false")
+    fi
+    
+    # 檢測是否有加密檔案
+    if [ -f "$base_backup/base.tar.gz.enc" ] || [ -f "$base_backup/base.tar.enc" ]; then
+        is_encrypted="true"
+    fi
+    
+    log "  Encrypted: $is_encrypted"
+    
+    if [ "$is_encrypted" = "true" ] && [ -z "$BACKUP_ENCRYPTION_PASSWORD" ]; then
+        error_exit "BACKUP_ENCRYPTION_PASSWORD is required for encrypted backups"
+    fi
+    
     # 清理暫存目錄
     rm -rf "$restore_target"
     mkdir -p "$restore_target"
@@ -104,7 +125,21 @@ prepare_restore() {
     # 解壓縮 base backup
     log "Extracting base backup..."
     
-    if [ -f "$base_backup/base.tar.gz" ]; then
+    if [ -f "$base_backup/base.tar.gz.enc" ]; then
+        # 解密 + 解壓縮
+        log "Decrypting and extracting base.tar.gz.enc"
+        openssl enc -$BACKUP_ENCRYPTION_ALGORITHM -d -pbkdf2 \
+            -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
+            -in "$base_backup/base.tar.gz.enc" | \
+            tar -xzf - -C "$restore_target"
+    elif [ -f "$base_backup/base.tar.enc" ]; then
+        # 僅解密
+        log "Decrypting and extracting base.tar.enc"
+        openssl enc -$BACKUP_ENCRYPTION_ALGORITHM -d -pbkdf2 \
+            -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
+            -in "$base_backup/base.tar.enc" | \
+            tar -xf - -C "$restore_target"
+    elif [ -f "$base_backup/base.tar.gz" ]; then
         tar -xzf "$base_backup/base.tar.gz" -C "$restore_target"
         log "Extracted base.tar.gz"
     elif [ -f "$base_backup/base.tar" ]; then
@@ -117,7 +152,14 @@ prepare_restore() {
     fi
     
     # 解壓縮 pg_wal (如果存在)
-    if [ -f "$base_backup/pg_wal.tar.gz" ]; then
+    if [ -f "$base_backup/pg_wal.tar.gz.enc" ]; then
+        mkdir -p "$restore_target/pg_wal"
+        openssl enc -$BACKUP_ENCRYPTION_ALGORITHM -d -pbkdf2 \
+            -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
+            -in "$base_backup/pg_wal.tar.gz.enc" | \
+            tar -xzf - -C "$restore_target/pg_wal"
+        log "Decrypted and extracted pg_wal.tar.gz.enc"
+    elif [ -f "$base_backup/pg_wal.tar.gz" ]; then
         mkdir -p "$restore_target/pg_wal"
         tar -xzf "$base_backup/pg_wal.tar.gz" -C "$restore_target/pg_wal"
         log "Extracted pg_wal.tar.gz"

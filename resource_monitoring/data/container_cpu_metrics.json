@@ -1,0 +1,161 @@
+{
+  "previous": {
+    "containers": {
+      "4fc70ee947e4": {
+        "name": "cadvisor",
+        "cpu_total_ns": 294875963000,
+        "timestamp": 1768384696.612296
+      },
+      "62c78350661d": {
+        "name": "mindge-backend-redis",
+        "cpu_total_ns": 29817354000,
+        "timestamp": 1768384697.037627
+      },
+      "652cde1fe7ef": {
+        "name": "mingde-backend-main-api-mingde-minio-1",
+        "cpu_total_ns": 56323439000,
+        "timestamp": 1768384696.459562
+      },
+      "6586e2c0bdda": {
+        "name": "mindge-backend-main-api",
+        "cpu_total_ns": 32017150000,
+        "timestamp": 1768384696.326129
+      },
+      "701977419ab6": {
+        "name": "node_exporter",
+        "cpu_total_ns": 4807188000,
+        "timestamp": 1768384667.35714
+      },
+      "7637de648915": {
+        "name": "postgres_db",
+        "cpu_total_ns": 65961850000,
+        "timestamp": 1768384695.817538
+      },
+      "7a690935509f": {
+        "name": "monitoring-api",
+        "cpu_total_ns": 29526564000,
+        "timestamp": 1768384695.975267
+      },
+      "b99333fe6164": {
+        "name": "filebrowser",
+        "cpu_total_ns": 169182326000,
+        "timestamp": 1768384696.566475
+      },
+      "bc5632102e8c": {
+        "name": "postgres",
+        "cpu_total_ns": 276634000,
+        "timestamp": 1768384697.065216
+      },
+      "ca636874e93c": {
+        "name": "mingde-backend-main-linebot-aws-dev-container",
+        "cpu_total_ns": 926082186000,
+        "timestamp": 1768384696.929621
+      },
+      "d2ed7ec307d3": {
+        "name": "postgres-backup",
+        "cpu_total_ns": 758737000,
+        "timestamp": 1768384697.090223
+      }
+    },
+    "timestamp": 1768384697.5296729
+  },
+  "current": {
+    "containers": {
+      "1a4df3df8052": {
+        "name": "monitoring-api",
+        "cpu_total_ns": 54999000,
+        "timestamp": 1768386361.756198
+      },
+      "62c78350661d": {
+        "name": "mindge-backend-redis",
+        "cpu_total_ns": 32555289000,
+        "timestamp": 1768386361.543944
+      },
+      "652cde1fe7ef": {
+        "name": "mingde-backend-main-api-mingde-minio-1",
+        "cpu_total_ns": 61908120000,
+        "timestamp": 1768386361.550535
+      },
+      "6586e2c0bdda": {
+        "name": "mindge-backend-main-api",
+        "cpu_total_ns": 34409968000,
+        "timestamp": 1768386361.56802
+      },
+      "7637de648915": {
+        "name": "postgres_db",
+        "cpu_total_ns": 71628016000,
+        "timestamp": 1768386361.576423
+      },
+      "a7aa438c47e0": {
+        "name": "cadvisor",
+        "cpu_total_ns": 143416000,
+        "timestamp": 1768386361.556901
+      },
+      "b99333fe6164": {
+        "name": "filebrowser",
+        "cpu_total_ns": 184250767000,
+        "timestamp": 1768386361.585766
+      },
+      "ca636874e93c": {
+        "name": "mingde-backend-main-linebot-aws-dev-container",
+        "cpu_total_ns": 1014262620000,
+        "timestamp": 1768386361.773143
+      },
+      "d2ed7ec307d3": {
+        "name": "postgres-backup",
+        "cpu_total_ns": 821048000,
+        "timestamp": 1768386361.593728
+      },
+      "d8e593aa9214": {
+        "name": "node_exporter",
+        "cpu_total_ns": 51919000,
+        "timestamp": 1768386361.783387
+      }
+    },
+    "timestamp": 1768386362.335827
+  },
+  "calculated_usage": {
+    "1a4df3df8052": {
+      "name": "monitoring-api",
+      "cpu_usage_percent": 0.0
+    },
+    "62c78350661d": {
+      "name": "mindge-backend-redis",
+      "cpu_usage_percent": 0.16
+    },
+    "652cde1fe7ef": {
+      "name": "mingde-backend-main-api-mingde-minio-1",
+      "cpu_usage_percent": 0.34
+    },
+    "6586e2c0bdda": {
+      "name": "mindge-backend-main-api",
+      "cpu_usage_percent": 0.14
+    },
+    "7637de648915": {
+      "name": "postgres_db",
+      "cpu_usage_percent": 0.34
+    },
+    "a7aa438c47e0": {
+      "name": "cadvisor",
+      "cpu_usage_percent": 0.0
+    },
+    "b99333fe6164": {
+      "name": "filebrowser",
+      "cpu_usage_percent": 0.91
+    },
+    "ca636874e93c": {
+      "name": "mingde-backend-main-linebot-aws-dev-container",
+      "cpu_usage_percent": 5.3
+    },
+    "d2ed7ec307d3": {
+      "name": "postgres-backup",
+      "cpu_usage_percent": 0
+    },
+    "d8e593aa9214": {
+      "name": "node_exporter",
+      "cpu_usage_percent": 0.0
+    }
+  },
+  "sample_interval_minutes": 1,
+  "last_updated": "2026-01-14 10:26:02"
+}

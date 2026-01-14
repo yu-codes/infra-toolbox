@@ -210,6 +210,8 @@ __marimo__/
 # ============================================
 # PostgreSQL
 postgres/data/
+postgres/backups/
+postgres/wal_archive/
 
 # MinIO
 minio/data/
@@ -217,9 +219,6 @@ minio/data/
 # File Browser
 filebrowser/data/
 filebrowser/database/
-
-# PostgreSQL Backup
-postgres_backup/backups/
 
 # MinIO Backup
 minio_backup/backups/

@@ -1,14 +1,47 @@
 #!/bin/sh
-# ============================================
-# MinIO 備份腳本
-# ============================================
+# ============================================================================
+# MinIO 備份腳本 (使用 mc - MinIO 官方客戶端工具)
+#
+# 這個腳本使用 MinIO 官方提供的 mc (MinIO Client) 工具進行物件儲存備份。
+# mc 是專為 S3 相容儲存設計的命令列工具，被 GitLab、Kubernetes Velero 等
+# 廣泛採用於自動化備份場景。
+#
+# 技術說明:
+# - mc 自動處理大檔案分塊傳輸 (multipart upload)
+# - 支援斷點續傳和錯誤自動重試
+# - 相容任何 S3 相容儲存 (AWS S3, MinIO, GCS 等)
+# - 保留檔案元資料 (metadata)
+#
+# 備份流程:
+# 1. mc cp --recursive: 遞迴下載 Bucket 所有檔案
+# 2. tar: 打包成單一歸檔
+# 3. gzip: 壓縮減少備份大小 (可選)
+# 4. openssl enc: AES 加密保護 (可選)
+#
+# 參考文獻:
+# - MinIO Client: https://min.io/docs/minio/linux/reference/minio-mc.html
+# - MinIO 備份指南: https://min.io/docs/minio/linux/operations/install-deploy-manage/migrate-fs-gateway.html
+#
+# 支援功能: Bucket 備份 / 壓縮 / 加密 / 自動清理
+# ============================================================================
 
 set -e
 
-# 載入配置
+# 載入配置 (優先使用環境變數，其次使用配置檔)
 CONFIG_FILE="${CONFIG_FILE:-/scripts/config/.env}"
 if [ -f "$CONFIG_FILE" ]; then
-    export $(grep -v '^#' "$CONFIG_FILE" | xargs)
+    # 只載入配置檔中未被環境變數覆蓋的值
+    while IFS='=' read -r key value; do
+        # 跳過註解和空行
+        case "$key" in
+            '#'*|'') continue ;;
+        esac
+        # 只有當環境變數未設定時才使用配置檔的值
+        eval "current_val=\${$key:-}"
+        if [ -z "$current_val" ]; then
+            export "$key=$value"
+        fi
+    done < "$CONFIG_FILE"
 fi
 
 # 預設值

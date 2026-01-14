@@ -1,9 +1,29 @@
 #!/bin/sh
-# ============================================
-# PostgreSQL 物理備份腳本 (WAL-based)
-# 支援: Base Backup / WAL Archive / 異地備份
-# 實現真正的增量備份和 PITR
-# ============================================
+# ============================================================================
+# PostgreSQL 物理備份腳本 (使用 pg_basebackup + WAL Archive)
+#
+# 這個腳本使用 PostgreSQL 官方提供的 pg_basebackup 工具進行物理備份，
+# 配合 WAL (Write-Ahead Log) 歸檔實現真正的增量備份和 PITR (Point-in-Time Recovery)。
+#
+# 技術原理:
+# - pg_basebackup: 建立資料庫的完整二進制副本 (Base Backup)
+# - WAL Archive: PostgreSQL 自動將 WAL 檔案歸檔，記錄所有資料變更
+# - PITR: 結合 Base Backup + WAL 重放，可還原到任意時間點
+#
+# 這是 AWS RDS、Google Cloud SQL、Azure Database 等企業級服務採用的備份方式。
+#
+# 使用場景:
+# - 大型資料庫 (> 100GB) - 物理備份比邏輯備份快數倍
+# - 需要 PITR - 可還原到任意時間點，最小化資料遺失
+# - 生產環境 - RPO (Recovery Point Objective) 近乎零
+#
+# 參考文獻:
+# - pg_basebackup: https://www.postgresql.org/docs/current/app-pgbasebackup.html
+# - WAL 原理: https://www.postgresql.org/docs/current/wal-intro.html
+# - PITR: https://www.postgresql.org/docs/current/continuous-archiving.html
+#
+# 支援功能: Base Backup / WAL Archive / 異地備份 / PITR / 加密
+# ============================================================================
 
 set -e
 
@@ -25,13 +45,21 @@ BASE_BACKUP_RETENTION_DAYS="${BASE_BACKUP_RETENTION_DAYS:-7}"
 BASE_BACKUP_FORMAT="${BASE_BACKUP_FORMAT:-tar}"
 BASE_BACKUP_COMPRESSION="${BASE_BACKUP_COMPRESSION:-true}"
 
+# 加密設定
+BACKUP_ENCRYPTION_ENABLED="${BACKUP_ENCRYPTION_ENABLED:-false}"
+BACKUP_ENCRYPTION_ALGORITHM="${BACKUP_ENCRYPTION_ALGORITHM:-aes-256-cbc}"
+
 # WAL 設定
 WAL_RETENTION_DAYS="${WAL_RETENTION_DAYS:-14}"
 WAL_COMPRESSION="${WAL_COMPRESSION:-true}"
+WAL_ENCRYPTION_ENABLED="${WAL_ENCRYPTION_ENABLED:-false}"
 
 # 異地備份
 REMOTE_BACKUP_ENABLED="${REMOTE_BACKUP_ENABLED:-false}"
 REMOTE_BACKUP_RETENTION_DAYS="${REMOTE_BACKUP_RETENTION_DAYS:-90}"
+
+# 連接模式: docker (透過 Docker 網路) 或 host (直接連接宿主機)
+POSTGRES_CONNECTION_MODE="${POSTGRES_CONNECTION_MODE:-docker}"
 
 # 目錄結構
 BASE_BACKUP_DIR="$BACKUP_DIR/base"
@@ -59,6 +87,42 @@ error_exit() {
 # 驗證必要配置
 validate_config() {
     [ -z "$POSTGRES_PASSWORD" ] && error_exit "POSTGRES_PASSWORD is required"
+    
+    # 驗證加密配置
+    if [ "$BACKUP_ENCRYPTION_ENABLED" = "true" ] && [ -z "$BACKUP_ENCRYPTION_PASSWORD" ]; then
+        error_exit "BACKUP_ENCRYPTION_PASSWORD is required when encryption is enabled"
+    fi
+    
+    # 驗證加密算法
+    if [ "$BACKUP_ENCRYPTION_ENABLED" = "true" ]; then
+        case "$BACKUP_ENCRYPTION_ALGORITHM" in
+            aes-256-cbc|aes-128-cbc|aes-256-gcm|chacha20-poly1305|aes-192-cbc)
+                log "Using encryption algorithm: $BACKUP_ENCRYPTION_ALGORITHM"
+                ;;
+            *)
+                error_exit "Unsupported encryption algorithm: $BACKUP_ENCRYPTION_ALGORITHM"
+                ;;
+        esac
+    fi
+}
+
+# 測試 PostgreSQL 連接
+test_connection() {
+    log "Testing PostgreSQL connection..."
+    export PGPASSWORD="$POSTGRES_PASSWORD"
+    
+    if psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USERNAME" \
+        -d "${POSTGRES_DATABASE:-postgres}" -c "SELECT 1;" >/dev/null 2>&1; then
+        log "  Connection: OK"
+        log "  Host: $POSTGRES_HOST:$POSTGRES_PORT"
+        log "  Connection Mode: $POSTGRES_CONNECTION_MODE"
+        unset PGPASSWORD
+        return 0
+    else
+        log "  Connection: FAILED"
+        unset PGPASSWORD
+        return 1
+    fi
 }
 
 # ============================================
@@ -74,8 +138,16 @@ backup_base() {
     
     log "Creating base backup: $backup_path"
     log "  Host: $POSTGRES_HOST:$POSTGRES_PORT"
+    log "  Connection Mode: $POSTGRES_CONNECTION_MODE"
     log "  Format: $BASE_BACKUP_FORMAT"
     log "  Compression: $BASE_BACKUP_COMPRESSION"
+    log "  Encryption: $BACKUP_ENCRYPTION_ENABLED"
+    [ "$BACKUP_ENCRYPTION_ENABLED" = "true" ] && log "  Encryption Algorithm: $BACKUP_ENCRYPTION_ALGORITHM"
+    
+    # 測試連接
+    if ! test_connection; then
+        error_exit "Cannot connect to PostgreSQL at $POSTGRES_HOST:$POSTGRES_PORT"
+    fi
     
     export PGPASSWORD="$POSTGRES_PASSWORD"
     
@@ -109,12 +181,35 @@ backup_base() {
         log "  Path: $backup_path"
         log "  Size: $backup_size"
         
+        # 如果啟用加密，對備份檔案進行加密
+        if [ "$BACKUP_ENCRYPTION_ENABLED" = "true" ]; then
+            log "Encrypting backup files..."
+            
+            for file in "$backup_path"/*.tar.gz "$backup_path"/*.tar; do
+                if [ -f "$file" ]; then
+                    log "  Encrypting: $(basename "$file")"
+                    openssl enc -$BACKUP_ENCRYPTION_ALGORITHM -salt -pbkdf2 \
+                        -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
+                        -in "$file" -out "${file}.enc"
+                    rm -f "$file"
+                fi
+            done
+            
+            log "Encryption completed"
+        fi
+        
         # 記錄備份資訊
         cat > "$backup_path/backup_info" << EOF
 BACKUP_NAME=$backup_name
 BACKUP_TIME=$TIMESTAMP
 BACKUP_TYPE=base
 BACKUP_FORMAT=$BASE_BACKUP_FORMAT
+BACKUP_COMPRESSION=$BASE_BACKUP_COMPRESSION
+BACKUP_ENCRYPTION=$BACKUP_ENCRYPTION_ENABLED
+ENCRYPTION_ALGORITHM=$BACKUP_ENCRYPTION_ALGORITHM
+CONNECTION_MODE=$POSTGRES_CONNECTION_MODE
+POSTGRES_HOST=$POSTGRES_HOST
+POSTGRES_PORT=$POSTGRES_PORT
 POSTGRES_VERSION=$(psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USERNAME" -t -c "SELECT version();" 2>/dev/null | head -1 || echo "unknown")
 EOF
         
@@ -143,6 +238,9 @@ backup_wal() {
     
     # 同步 WAL 檔案
     log "Syncing WAL files from $POSTGRES_WAL_DIR to $WAL_BACKUP_DIR"
+    log "  WAL Compression: $WAL_COMPRESSION"
+    log "  WAL Encryption: $WAL_ENCRYPTION_ENABLED"
+    [ "$WAL_ENCRYPTION_ENABLED" = "true" ] && log "  Encryption Algorithm: $BACKUP_ENCRYPTION_ALGORITHM"
     
     local wal_count=0
     for wal_file in "$POSTGRES_WAL_DIR"/*; do
@@ -150,12 +248,29 @@ backup_wal() {
             local filename=$(basename "$wal_file")
             local dest_file="$WAL_BACKUP_DIR/$filename"
             
-            # 檢查是否已存在
-            if [ ! -f "$dest_file" ] && [ ! -f "${dest_file}.gz" ]; then
-                if [ "$WAL_COMPRESSION" = "true" ]; then
+            # 檢查是否已存在 (考慮各種副檔名)
+            if [ ! -f "$dest_file" ] && [ ! -f "${dest_file}.gz" ] && \
+               [ ! -f "${dest_file}.enc" ] && [ ! -f "${dest_file}.gz.enc" ]; then
+                
+                if [ "$WAL_COMPRESSION" = "true" ] && [ "$WAL_ENCRYPTION_ENABLED" = "true" ]; then
+                    # 壓縮 + 加密
+                    gzip -c "$wal_file" | \
+                        openssl enc -$BACKUP_ENCRYPTION_ALGORITHM -salt -pbkdf2 \
+                        -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
+                        -out "${dest_file}.gz.enc"
+                    log "Archived: $filename -> ${filename}.gz.enc"
+                elif [ "$WAL_COMPRESSION" = "true" ]; then
+                    # 僅壓縮
                     gzip -c "$wal_file" > "${dest_file}.gz"
                     log "Archived: $filename -> ${filename}.gz"
+                elif [ "$WAL_ENCRYPTION_ENABLED" = "true" ]; then
+                    # 僅加密
+                    openssl enc -$BACKUP_ENCRYPTION_ALGORITHM -salt -pbkdf2 \
+                        -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
+                        -in "$wal_file" -out "${dest_file}.enc"
+                    log "Archived: $filename -> ${filename}.enc"
                 else
+                    # 原始複製
                     cp "$wal_file" "$dest_file"
                     log "Archived: $filename"
                 fi

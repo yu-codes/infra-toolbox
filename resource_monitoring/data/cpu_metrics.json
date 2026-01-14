@@ -1,0 +1,1366 @@
+{
+  "previous": {
+    "cpu_metrics": [
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "idle"
+        },
+        "value": 16918.56
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "iowait"
+        },
+        "value": 2.88
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "softirq"
+        },
+        "value": 820.42
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "system"
+        },
+        "value": 1247.79
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "user"
+        },
+        "value": 142.1
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "idle"
+        },
+        "value": 18318.28
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "iowait"
+        },
+        "value": 6.93
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "softirq"
+        },
+        "value": 156.15
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "system"
+        },
+        "value": 173.95
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "user"
+        },
+        "value": 172.21
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "idle"
+        },
+        "value": 18122.01
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "iowait"
+        },
+        "value": 3.83
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "softirq"
+        },
+        "value": 6.36
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "system"
+        },
+        "value": 280.82
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "user"
+        },
+        "value": 226.72
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "idle"
+        },
+        "value": 18270.41
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "iowait"
+        },
+        "value": 3.12
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "softirq"
+        },
+        "value": 9.62
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "system"
+        },
+        "value": 215.36
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "user"
+        },
+        "value": 182.66
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "idle"
+        },
+        "value": 18125.17
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "iowait"
+        },
+        "value": 5.98
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "softirq"
+        },
+        "value": 33.18
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "system"
+        },
+        "value": 281.93
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "user"
+        },
+        "value": 224.93
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "idle"
+        },
+        "value": 18272.32
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "iowait"
+        },
+        "value": 3.42
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "softirq"
+        },
+        "value": 29.42
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "system"
+        },
+        "value": 214.61
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "user"
+        },
+        "value": 183.95
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "idle"
+        },
+        "value": 18141.22
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "iowait"
+        },
+        "value": 4.38
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "softirq"
+        },
+        "value": 11.33
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "system"
+        },
+        "value": 272.98
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "user"
+        },
+        "value": 221.75
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "idle"
+        },
+        "value": 18271.18
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "iowait"
+        },
+        "value": 2.47
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "softirq"
+        },
+        "value": 18.45
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "system"
+        },
+        "value": 214.17
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "user"
+        },
+        "value": 184.25
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "idle"
+        },
+        "value": 18124.98
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "iowait"
+        },
+        "value": 4.29
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "softirq"
+        },
+        "value": 8.84
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "system"
+        },
+        "value": 281.38
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "user"
+        },
+        "value": 224.16
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "idle"
+        },
+        "value": 18259.95
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "iowait"
+        },
+        "value": 3.33
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "softirq"
+        },
+        "value": 14.79
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "system"
+        },
+        "value": 219.33
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "user"
+        },
+        "value": 185.29
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "idle"
+        },
+        "value": 18119.33
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "iowait"
+        },
+        "value": 4.05
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "softirq"
+        },
+        "value": 7.67
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "system"
+        },
+        "value": 284.47
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "user"
+        },
+        "value": 224.77
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "idle"
+        },
+        "value": 18260.21
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "iowait"
+        },
+        "value": 2.67
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "softirq"
+        },
+        "value": 11.22
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "system"
+        },
+        "value": 216.3
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "user"
+        },
+        "value": 186.0
+      }
+    ],
+    "cpu_count": 12,
+    "timestamp": 1768384697.4712176
+  },
+  "current": {
+    "cpu_metrics": [
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "idle"
+        },
+        "value": 18408.66
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "iowait"
+        },
+        "value": 3.07
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "softirq"
+        },
+        "value": 892.66
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "system"
+        },
+        "value": 1362.37
+      },
+      {
+        "labels": {
+          "cpu": "0",
+          "mode": "user"
+        },
+        "value": 157.05
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "idle"
+        },
+        "value": 19937.39
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "iowait"
+        },
+        "value": 7.36
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "softirq"
+        },
+        "value": 169.03
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "system"
+        },
+        "value": 192.37
+      },
+      {
+        "labels": {
+          "cpu": "1",
+          "mode": "user"
+        },
+        "value": 189.91
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "idle"
+        },
+        "value": 19722.41
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "iowait"
+        },
+        "value": 4.11
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "softirq"
+        },
+        "value": 7.14
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "system"
+        },
+        "value": 310.11
+      },
+      {
+        "labels": {
+          "cpu": "10",
+          "mode": "user"
+        },
+        "value": 249.05
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "idle"
+        },
+        "value": 19889.09
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "iowait"
+        },
+        "value": 3.37
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "softirq"
+        },
+        "value": 10.89
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "system"
+        },
+        "value": 234.43
+      },
+      {
+        "labels": {
+          "cpu": "11",
+          "mode": "user"
+        },
+        "value": 201.25
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "idle"
+        },
+        "value": 19730.42
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "iowait"
+        },
+        "value": 6.36
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "softirq"
+        },
+        "value": 36.54
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "system"
+        },
+        "value": 307.39
+      },
+      {
+        "labels": {
+          "cpu": "2",
+          "mode": "user"
+        },
+        "value": 246.78
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "idle"
+        },
+        "value": 19887.6
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "iowait"
+        },
+        "value": 3.72
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "softirq"
+        },
+        "value": 32.66
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "system"
+        },
+        "value": 236.15
+      },
+      {
+        "labels": {
+          "cpu": "3",
+          "mode": "user"
+        },
+        "value": 202.74
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "idle"
+        },
+        "value": 19742.98
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "iowait"
+        },
+        "value": 4.77
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "softirq"
+        },
+        "value": 12.77
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "system"
+        },
+        "value": 301.21
+      },
+      {
+        "labels": {
+          "cpu": "4",
+          "mode": "user"
+        },
+        "value": 244.79
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "idle"
+        },
+        "value": 19887.49
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "iowait"
+        },
+        "value": 2.76
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "softirq"
+        },
+        "value": 20.41
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "system"
+        },
+        "value": 235.64
+      },
+      {
+        "labels": {
+          "cpu": "5",
+          "mode": "user"
+        },
+        "value": 203.25
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "idle"
+        },
+        "value": 19728.01
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "iowait"
+        },
+        "value": 4.57
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "softirq"
+        },
+        "value": 9.9
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "system"
+        },
+        "value": 309.0
+      },
+      {
+        "labels": {
+          "cpu": "6",
+          "mode": "user"
+        },
+        "value": 246.13
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "idle"
+        },
+        "value": 19876.19
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "iowait"
+        },
+        "value": 3.53
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "softirq"
+        },
+        "value": 16.58
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "system"
+        },
+        "value": 240.79
+      },
+      {
+        "labels": {
+          "cpu": "7",
+          "mode": "user"
+        },
+        "value": 204.04
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "idle"
+        },
+        "value": 19723.15
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "iowait"
+        },
+        "value": 4.4
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "softirq"
+        },
+        "value": 8.67
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "system"
+        },
+        "value": 309.95
+      },
+      {
+        "labels": {
+          "cpu": "8",
+          "mode": "user"
+        },
+        "value": 246.82
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "idle"
+        },
+        "value": 19877.79
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "iowait"
+        },
+        "value": 2.84
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "irq"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "nice"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "softirq"
+        },
+        "value": 12.69
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "steal"
+        },
+        "value": 0.0
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "system"
+        },
+        "value": 235.89
+      },
+      {
+        "labels": {
+          "cpu": "9",
+          "mode": "user"
+        },
+        "value": 204.14
+      }
+    ],
+    "cpu_count": 12,
+    "timestamp": 1768386362.3112054
+  },
+  "calculated_usage": {
+    "usage_percent": 3.59,
+    "cpu_count": 12,
+    "sample_interval_minutes": 1,
+    "calculated_at": "2026-01-14 10:26:02",
+    "time_delta_seconds": 1664.8399877548218
+  },
+  "last_updated": "2026-01-14 10:26:02"
+}

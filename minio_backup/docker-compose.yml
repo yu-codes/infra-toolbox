@@ -1,16 +1,39 @@
 services:
   minio-backup:
-    image: minio/mc:latest
+    # 使用 alpine 基底映像，包含 tar, gzip, openssl 等工具
+    # mc 會在容器啟動時從官方源安裝
+    image: alpine:latest
     container_name: minio-backup
     env_file:
       - path: ./.env
         required: false
+    environment:
+      # 傳遞環境變數給腳本
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      BACKUP_BUCKET: ${BACKUP_BUCKET:-data}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      BACKUP_COMPRESSION_ENABLED: ${BACKUP_COMPRESSION_ENABLED:-true}
+      BACKUP_ENCRYPTION_ENABLED: ${BACKUP_ENCRYPTION_ENABLED:-false}
+      BACKUP_ENCRYPTION_PASSWORD: ${BACKUP_ENCRYPTION_PASSWORD:-}
     volumes:
       - ./scripts:/scripts:ro
       - ./backups:/backups
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
+        set -e
+        # 安裝必要工具: mc (MinIO Client), tar, gzip, openssl
+        echo "Installing dependencies..."
+        apk add --no-cache curl openssl tar gzip ca-certificates
+        # 安裝 mc (MinIO Client)
+        echo "Downloading MinIO Client (mc)..."
+        curl -sSL --retry 3 --retry-delay 5 https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+        chmod +x /usr/local/bin/mc
+        # 驗證 mc 安裝
+        mc --version || exit 1
         echo "MinIO Backup Service Ready"
         echo "Use: docker exec minio-backup /scripts/backup.sh"
         tail -f /dev/null

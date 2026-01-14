@@ -26,6 +26,12 @@ RESTORE_HOST="${RESTORE_HOST:-postgres}"
 RESTORE_PORT="${RESTORE_PORT:-5432}"
 RESTORE_USER="${RESTORE_USER:-postgres}"
 
+# 加密算法配置 (需與備份時使用的算法一致)
+BACKUP_ENCRYPTION_ALGORITHM="${BACKUP_ENCRYPTION_ALGORITHM:-aes-256-cbc}"
+
+# 連接模式: docker 或 host
+POSTGRES_CONNECTION_MODE="${POSTGRES_CONNECTION_MODE:-docker}"
+
 BACKUP_DIR="${BACKUP_DIR:-/backups}"
 LOG_DIR="$BACKUP_DIR/logs"
 
@@ -77,6 +83,7 @@ do_restore() {
     log "  Backup file: $backup_file"
     log "  Target: $RESTORE_HOST:$RESTORE_PORT/$RESTORE_DB"
     log "  User: $RESTORE_USER"
+    log "  Connection Mode: $POSTGRES_CONNECTION_MODE"
     
     # 檢測檔案類型
     local file_type=$(detect_file_type "$backup_file")
@@ -85,6 +92,7 @@ do_restore() {
     
     log "  Encrypted: $is_encrypted"
     log "  Compressed: $is_compressed"
+    [ "$is_encrypted" = "true" ] && log "  Decryption Algorithm: $BACKUP_ENCRYPTION_ALGORITHM"
     
     # 驗證加密密碼
     if [ "$is_encrypted" = "true" ] && [ -z "$BACKUP_ENCRYPTION_PASSWORD" ]; then
@@ -92,6 +100,14 @@ do_restore() {
     fi
     
     export PGPASSWORD="$RESTORE_PASS"
+    
+    # 測試連接
+    log "Testing connection to restore target..."
+    if ! psql -h "$RESTORE_HOST" -p "$RESTORE_PORT" -U "$RESTORE_USER" -d postgres -c "SELECT 1;" >/dev/null 2>&1; then
+        unset PGPASSWORD
+        error_exit "Cannot connect to PostgreSQL at $RESTORE_HOST:$RESTORE_PORT"
+    fi
+    log "  Connection: OK"
     
     # 刪除現有資料庫 (若啟用)
     if [ "$RESTORE_DROP" = "true" ]; then
@@ -112,13 +128,13 @@ do_restore() {
     
     if [ "$is_encrypted" = "true" ] && [ "$is_compressed" = "true" ]; then
         # 解密 + 解壓縮
-        openssl enc -aes-256-cbc -d -pbkdf2 -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
+        openssl enc -$BACKUP_ENCRYPTION_ALGORITHM -d -pbkdf2 -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
             -in "$backup_file" | \
             gunzip | \
             psql -h "$RESTORE_HOST" -p "$RESTORE_PORT" -U "$RESTORE_USER" -d "$RESTORE_DB"
     elif [ "$is_encrypted" = "true" ]; then
         # 僅解密
-        openssl enc -aes-256-cbc -d -pbkdf2 -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
+        openssl enc -$BACKUP_ENCRYPTION_ALGORITHM -d -pbkdf2 -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
             -in "$backup_file" | \
             psql -h "$RESTORE_HOST" -p "$RESTORE_PORT" -U "$RESTORE_USER" -d "$RESTORE_DB"
     elif [ "$is_compressed" = "true" ]; then
@@ -168,13 +184,14 @@ verify_backup() {
     echo "  Size: $(du -h "$backup_file" | cut -f1)"
     echo "  Encrypted: $is_encrypted"
     echo "  Compressed: $is_compressed"
+    [ "$is_encrypted" = "true" ] && echo "  Encryption Algorithm: $BACKUP_ENCRYPTION_ALGORITHM"
     
     # 測試解壓縮/解密
     if [ "$is_encrypted" = "true" ] && [ "$is_compressed" = "true" ]; then
         if [ -z "$BACKUP_ENCRYPTION_PASSWORD" ]; then
             echo "  Integrity: Cannot verify (password required)"
         else
-            if openssl enc -aes-256-cbc -d -pbkdf2 -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
+            if openssl enc -$BACKUP_ENCRYPTION_ALGORITHM -d -pbkdf2 -pass pass:"$BACKUP_ENCRYPTION_PASSWORD" \
                 -in "$backup_file" 2>/dev/null | gunzip -t 2>/dev/null; then
                 echo "  Integrity: OK"
             else

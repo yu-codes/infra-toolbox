@@ -8,6 +8,7 @@
 |------|------|
 | 宿主機監控 | CPU、RAM、Storage 使用率 (via node_exporter) |
 | 容器監控 | CPU、Memory、Storage 使用率 (via cAdvisor) |
+| Log 監控 | 監控系統日誌檔案以判斷服務運作狀態 |
 | REST API | FastAPI 提供 JSON 格式監控數據 |
 | CPU 定時採樣 | 可配置的 n 分鐘區間 CPU 使用率計算 |
 
@@ -263,6 +264,195 @@ scrape_configs:
 
 ---
 
+## Log 監控功能
+
+### 概述
+
+Log 監控功能用於判斷系統服務是否在正常運作。通過監控日誌檔案的修改時間，當檔案在指定時間閾值內被修改，表示該服務活躍。
+
+### 業界最佳實踐實現
+
+該功能基於以下最佳實踐設計：
+
+1. **非侵入式監控**：無需修改應用程式，直接監控日誌檔案
+2. **文件系統效率**：使用 `Path.iterdir()` 和 `stat.st_mtime` 進行高效掃描
+3. **可配置閾值**：靈活設定活躍判定時間範圍
+4. **詳細狀態反饋**：區分多個活動狀態（active/recently_inactive/inactive）
+5. **批量監控**：一次 API 呼叫可監控多個服務的日誌
+
+### 配置說明
+
+#### 基本配置
+
+在 `docker-compose.yml` 中配置：
+
+```yaml
+environment:
+  # 多個日誌路徑用分號隔開
+  LOG_MONITOR_PATHS: /var/log/service1;/var/log/service2;/var/log/docker
+  
+  # 啟用或禁用日誌監控
+  LOG_MONITOR_ENABLED: "true"
+  
+  # 檔案在此時間內修改則視為服務活躍 (單位：分鐘)
+  LOG_ACTIVITY_THRESHOLD_MINUTES: "5"
+```
+
+#### 掛載日誌目錄
+
+```yaml
+volumes:
+  - /var/log:/host/logs:ro  # 掛載系統日誌 (唯讀)
+```
+
+### API 端點
+
+#### 1. 檢查所有日誌路徑狀態
+
+**請求**
+
+```bash
+GET http://localhost:10003/log-status
+```
+
+**響應示例**
+
+```json
+{
+  "status": "success",
+  "timestamp": "2026-01-16 10:30:45",
+  "monitoring_enabled": true,
+  "activity_threshold_minutes": 5,
+  "total_paths": 3,
+  "active_paths": 2,
+  "is_active": false,
+  "overall_status": "2/3 services are active",
+  "paths": [
+    {
+      "path": "/var/log/docker",
+      "status": "success",
+      "latest_time": "2026-01-16 10:28:12",
+      "latest_time_unix": 1737004092,
+      "latest_file": "docker.log",
+      "is_active": true,
+      "activity_status": "active",
+      "time_diff_minutes": 2.55,
+      "activity_threshold_minutes": 5,
+      "file_count": 1
+    },
+    {
+      "path": "/var/log/service1",
+      "status": "success",
+      "latest_time": "2026-01-16 10:15:30",
+      "latest_file": "app.log",
+      "is_active": false,
+      "activity_status": "recently_inactive",
+      "time_diff_minutes": 15.25,
+      "activity_threshold_minutes": 5,
+      "file_count": 1
+    },
+    {
+      "path": "/var/log/service2",
+      "status": "error",
+      "message": "Path not found: /var/log/service2",
+      "is_active": false,
+      "activity_status": "path_not_found"
+    }
+  ]
+}
+```
+
+#### 2. 檢查特定日誌路徑狀態
+
+**請求**
+
+```bash
+# 檢查第一個日誌路徑 (索引 0)
+GET http://localhost:10003/log-status/0
+```
+
+**響應示例**
+
+```json
+{
+  "path": "/var/log/docker",
+  "path_index": 0,
+  "status": "success",
+  "latest_time": "2026-01-16 10:28:12",
+  "latest_time_unix": 1737004092,
+  "latest_file": "docker.log",
+  "is_active": true,
+  "activity_status": "active",
+  "time_diff_minutes": 2.55,
+  "activity_threshold_minutes": 5,
+  "file_count": 1
+}
+```
+
+### 活動狀態說明
+
+| 狀態 | 說明 | 時間範圍 |
+|------|------|---------|
+| `active` | 服務正在活躍運作 | 0 ~ threshold 分鐘 |
+| `recently_inactive` | 最近曾運作但現已停止 | threshold ~ 60 分鐘 |
+| `inactive` | 長期未活動 | > 60 分鐘 |
+| `path_not_found` | 監控路徑不存在 | - |
+| `empty_directory` | 目錄存在但為空 | - |
+| `no_files` | 目錄內無檔案 | - |
+| `permission_denied` | 無權限存取 | - |
+| `error` | 其他錯誤 | - |
+
+### 實際使用範例
+
+#### 場景 1：監控 Docker 日誌
+
+```bash
+# 設定環境變數
+export LOG_MONITOR_PATHS="/var/log/docker"
+export LOG_ACTIVITY_THRESHOLD_MINUTES="5"
+
+# 啟動服務
+docker-compose up -d
+
+# 檢查 Docker 服務狀態
+curl http://localhost:10003/log-status
+```
+
+#### 場景 2：監控多個應用服務
+
+```bash
+export LOG_MONITOR_PATHS="/var/log/app1;/var/log/app2;/var/log/nginx"
+export LOG_ACTIVITY_THRESHOLD_MINUTES="10"
+
+docker-compose up -d
+
+# 定期檢查所有服務
+watch -n 30 'curl -s http://localhost:10003/log-status | jq'
+```
+
+#### 場景 3：與健康檢查集成
+
+```bash
+#!/bin/bash
+# health_check.sh
+
+# 檢查 log 監控狀態
+LOG_STATUS=$(curl -s http://localhost:10003/log-status)
+
+# 提取 is_active 欄位
+ALL_ACTIVE=$(echo "$LOG_STATUS" | jq '.is_active')
+
+if [ "$ALL_ACTIVE" = "true" ]; then
+  echo "✓ All services active"
+  exit 0
+else
+  echo "✗ Some services inactive"
+  exit 1
+fi
+```
+
+---
+
 ## 環境變數
 
 | 變數 | 預設值 | 說明 |
@@ -271,6 +461,9 @@ scrape_configs:
 | `CADVISOR_URL` | http://cadvisor:8080 | cAdvisor 連接 URL |
 | `CPU_SAMPLE_INTERVAL_MINUTES` | 1 | CPU 採樣間隔 (分鐘) |
 | `DATA_DIR` | /app/data | 採樣資料儲存目錄 |
+| `LOG_MONITOR_PATHS` | (empty) | 監控的日誌路徑，多個用分號隔開 |
+| `LOG_MONITOR_ENABLED` | true | 是否啟用日誌監控 |
+| `LOG_ACTIVITY_THRESHOLD_MINUTES` | 5 | 活躍判定的時間閾值 (分鐘) |
 
 ---
 

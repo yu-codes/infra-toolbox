@@ -223,6 +223,9 @@ filebrowser/database/
 # MinIO Backup
 minio_backup/backups/
 
+# Resource Monitor
+resource_monitoring/data/
+
 # ============================================
 # Docker 相關
 # ============================================

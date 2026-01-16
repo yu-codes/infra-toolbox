@@ -1,6 +1,7 @@
 """
 Resource Monitoring API
 從 node_exporter 和 cAdvisor 取得系統與容器監控指標
+以及監控系統日誌檔案以判斷服務運作狀態
 """
 
 import asyncio
@@ -9,7 +10,9 @@ import os
 import re
 import threading
 import time
-from datetime import datetime
+import platform
+import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -21,6 +24,67 @@ from contextlib import asynccontextmanager
 # === 配置 ===
 NODE_EXPORTER_URL = os.getenv("NODE_EXPORTER_URL", "http://node_exporter:9100")
 CADVISOR_URL = os.getenv("CADVISOR_URL", "http://cadvisor:8080")
+
+
+# 自動檢測作業系統並設定預設日誌路徑
+def _get_default_log_paths() -> List[str]:
+    """根據作業系統自動檢測日誌路徑"""
+    system = platform.system()
+    paths = []
+
+    if system == "Linux":
+        # Linux: 優先檢查 /var/log/docker, /var/log, /app/data
+        candidates = ["/var/log/docker", "/var/log", "/app/data"]
+    elif system == "Darwin":
+        # macOS: 檢查系統日誌和應用日誌
+        candidates = [
+            "/var/log",
+            "/var/log/system.log",
+            f"{Path.home()}/Library/Logs",
+            "/app/data",
+        ]
+    elif system == "Windows":
+        # Windows: 檢查 Windows 事件日誌目錄或應用資料
+        candidates = [
+            "C:\\logs",
+            "C:\\ProgramData\\logs",
+            f"{os.environ.get('APPDATA')}\\logs",
+            "/app/data",
+        ]
+    else:
+        # 其他系統
+        candidates = ["/app/data"]
+
+    # 檢查哪些路徑實際存在
+    for path in candidates:
+        path_obj = Path(path)
+        if path_obj.exists():
+            paths.append(str(path))
+
+    # 如果沒有找到任何存在的路徑，使用 /app/data 作為後備（容器環境）
+    if not paths and Path("/app/data").exists():
+        paths.append("/app/data")
+
+    return paths
+
+
+# Log 監控配置
+_configured_paths = (
+    os.getenv("LOG_MONITOR_PATHS", "").split(";")
+    if os.getenv("LOG_MONITOR_PATHS")
+    else []
+)
+LOG_MONITOR_PATHS = [
+    p.strip() for p in _configured_paths if p.strip()
+] or _get_default_log_paths()
+LOG_MONITOR_ENABLED = os.getenv("LOG_MONITOR_ENABLED", "true").lower() == "true"
+# 活躍閾值：檔案在此時間內修改則視為活躍（分鐘）
+LOG_ACTIVITY_THRESHOLD_MINUTES = int(os.getenv("LOG_ACTIVITY_THRESHOLD_MINUTES", "5"))
+
+# 啟動時印出設定
+print(f"[INIT] OS: {platform.system()}")
+print(f"[INIT] Log Monitor Enabled: {LOG_MONITOR_ENABLED}")
+print(f"[INIT] Log Monitor Paths: {LOG_MONITOR_PATHS}")
 
 # CPU 使用率計算間隔 (分鐘)
 CPU_SAMPLE_INTERVAL_MINUTES = int(os.getenv("CPU_SAMPLE_INTERVAL_MINUTES", "1"))
@@ -542,6 +606,172 @@ async def cpu_sample_task():
         await asyncio.sleep(interval_seconds)
 
 
+# === Log 監控函數 ===
+
+
+def get_latest_log_file_info(log_path: str) -> Dict[str, Any]:
+    """
+    取得日誌檔案的最新修改時間和其他資訊
+
+    Args:
+        log_path: 日誌目錄或單一檔案路徑
+
+    Returns:
+        包含 latest_time, latest_file, activity_status 的 dict
+    """
+    path = Path(log_path)
+
+    if not path.exists():
+        return {
+            "status": "error",
+            "message": f"Path not found: {log_path}",
+            "latest_time": None,
+            "latest_file": None,
+            "is_active": False,
+            "activity_status": "path_not_found",
+        }
+
+    try:
+        latest_time = 0
+        latest_file = None
+        file_count = 0
+
+        # 如果是目錄則掃描所有檔案，如果是檔案則直接檢查
+        if path.is_dir():
+            entries = list(path.iterdir())
+            if not entries:
+                return {
+                    "status": "error",
+                    "message": "Directory is empty",
+                    "latest_time": None,
+                    "latest_file": None,
+                    "is_active": False,
+                    "activity_status": "empty_directory",
+                    "file_count": 0,
+                }
+
+            for entry in entries:
+                if entry.is_file():
+                    file_count += 1
+                    file_time = entry.stat().st_mtime
+                    if file_time > latest_time:
+                        latest_time = file_time
+                        latest_file = entry.name
+        elif path.is_file():
+            file_count = 1
+            latest_time = path.stat().st_mtime
+            latest_file = path.name
+
+        if latest_time == 0:
+            return {
+                "status": "error",
+                "message": "No files found in directory",
+                "latest_time": None,
+                "latest_file": None,
+                "is_active": False,
+                "activity_status": "no_files",
+                "file_count": file_count,
+            }
+
+        # 判斷活躍狀態：最後修改時間是否在閾值內
+        current_time = time.time()
+        time_diff_minutes = (current_time - latest_time) / 60
+        threshold_minutes = LOG_ACTIVITY_THRESHOLD_MINUTES
+        is_active = time_diff_minutes <= threshold_minutes
+
+        if is_active:
+            activity_status = "active"
+        elif time_diff_minutes < 60:
+            activity_status = "recently_inactive"
+        else:
+            activity_status = "inactive"
+
+        latest_time_str = datetime.fromtimestamp(latest_time).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+        return {
+            "status": "success",
+            "latest_time": latest_time_str,
+            "latest_time_unix": latest_time,
+            "latest_file": latest_file,
+            "is_active": is_active,
+            "activity_status": activity_status,
+            "time_diff_minutes": round(time_diff_minutes, 2),
+            "activity_threshold_minutes": threshold_minutes,
+            "file_count": file_count,
+        }
+
+    except PermissionError:
+        return {
+            "status": "error",
+            "message": f"Permission denied accessing: {log_path}",
+            "latest_time": None,
+            "latest_file": None,
+            "is_active": False,
+            "activity_status": "permission_denied",
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Error scanning directory: {str(e)}",
+            "latest_time": None,
+            "latest_file": None,
+            "is_active": False,
+            "activity_status": "error",
+        }
+
+
+def check_all_log_paths() -> Dict[str, Any]:
+    """
+    檢查所有配置的 log 路徑
+
+    Returns:
+        包含所有路徑檢查結果的 dict
+    """
+    if not LOG_MONITOR_ENABLED:
+        return {
+            "status": "disabled",
+            "message": "Log monitoring is disabled",
+            "paths": [],
+        }
+
+    if not LOG_MONITOR_PATHS:
+        return {
+            "status": "error",
+            "message": "No LOG_MONITOR_PATHS configured",
+            "paths": [],
+        }
+
+    results = []
+    all_active = True
+
+    for log_path in LOG_MONITOR_PATHS:
+        log_path = log_path.strip()
+        if not log_path:
+            continue
+
+        info = get_latest_log_file_info(log_path)
+        info["path"] = log_path
+        results.append(info)
+
+        # 如果任何路徑不活躍，則整體狀態為不完全活躍
+        if not info.get("is_active", False):
+            all_active = False
+
+    overall_status = "success" if all_active else "partial"
+
+    return {
+        "status": overall_status,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "monitoring_enabled": LOG_MONITOR_ENABLED,
+        "activity_threshold_minutes": LOG_ACTIVITY_THRESHOLD_MINUTES,
+        "total_paths": len(results),
+        "active_paths": sum(1 for r in results if r.get("is_active", False)),
+        "paths": results,
+    }
+
+
 # === FastAPI Lifespan ===
 
 
@@ -551,6 +781,9 @@ async def lifespan(app: FastAPI):
     # 啟動時開始 CPU 採樣任務
     task = asyncio.create_task(cpu_sample_task())
     print("Resource Monitoring API started with CPU sampling task")
+    print(f"OS: {platform.system()}")
+    print(f"Log Monitor Enabled: {LOG_MONITOR_ENABLED}")
+    print(f"Log Monitor Paths: {LOG_MONITOR_PATHS}")
     yield
     # 關閉時取消任務
     task.cancel()
@@ -602,6 +835,7 @@ async def root():
             "/health": "Health check",
             "/system-metrics": "System and container metrics",
             "/cpu-config": "CPU sampling configuration",
+            "/log-status": "Log file monitoring status",
         },
     }
 
@@ -728,7 +962,7 @@ async def get_system_metrics() -> dict:
             },
             "source": "node_exporter",
         }
-    except httpx.ConnectError:
+    except (httpx.RequestError, httpx.HTTPError):
         result["server_metrics"] = {
             "error": "node_exporter not available. Please start docker-compose up -d"
         }
@@ -866,7 +1100,7 @@ async def get_system_metrics() -> dict:
             "cpu_sample_interval_minutes": CPU_SAMPLE_INTERVAL_MINUTES,
             "cpu_last_updated": container_cpu_data.get("last_updated"),
         }
-    except httpx.ConnectError:
+    except (httpx.RequestError, httpx.HTTPError):
         result["container_metrics"] = {
             "error": "cadvisor not available. Please start docker-compose up -d"
         }
@@ -887,6 +1121,72 @@ async def get_system_metrics() -> dict:
         )
 
     return result
+
+
+@app.get("/log-status")
+async def get_log_status() -> Dict[str, Any]:
+    """
+    監控日誌檔案狀態
+
+    根據 LOG_MONITOR_PATHS 環境變數監控指定日誌檔案/目錄的修改時間，
+    以判斷相應服務是否在正常運作。
+
+    返回:
+    - status: success/partial/error/disabled
+    - paths: 每個路徑的詳細狀況
+    - is_active: 所有路徑是否都在活躍狀態
+    - activity_threshold_minutes: 活躍判定的時間閾值
+    """
+    result = check_all_log_paths()
+
+    # 增加整體活躍狀態判定
+    if result["status"] == "disabled":
+        result["is_active"] = False
+        result["overall_status"] = "Log monitoring not enabled"
+    elif result["status"] == "error":
+        result["is_active"] = False
+        result["overall_status"] = "No valid log paths to monitor"
+    else:
+        result["is_active"] = (
+            result["active_paths"] > 0
+            and result["active_paths"] == result["total_paths"]
+        )
+        if result["is_active"]:
+            result["overall_status"] = "All services are active"
+        else:
+            result["overall_status"] = (
+                f"{result['active_paths']}/{result['total_paths']} services are active"
+            )
+
+    return result
+
+
+@app.get("/log-status/{path_index}")
+async def get_specific_log_status(path_index: int) -> Dict[str, Any]:
+    """
+    取得特定日誌路徑的詳細狀態
+
+    Args:
+        path_index: 日誌路徑在 LOG_MONITOR_PATHS 中的索引 (0-based)
+
+    Returns:
+        該路徑的詳細狀況，包括最後修改時間、檔案名稱等
+    """
+    if not LOG_MONITOR_ENABLED:
+        raise HTTPException(status_code=503, detail="Log monitoring is disabled")
+
+    if not LOG_MONITOR_PATHS or path_index < 0 or path_index >= len(LOG_MONITOR_PATHS):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid path index. Available paths: {len(LOG_MONITOR_PATHS)}",
+        )
+
+    log_path = LOG_MONITOR_PATHS[path_index].strip()
+    info = get_latest_log_file_info(log_path)
+    info["path"] = log_path
+    info["path_index"] = path_index
+
+    return info
 
 
 if __name__ == "__main__":

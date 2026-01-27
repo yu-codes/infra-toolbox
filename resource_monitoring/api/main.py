@@ -636,21 +636,10 @@ def get_latest_log_file_info(log_path: str) -> Dict[str, Any]:
         latest_file = None
         file_count = 0
 
-        # 如果是目錄則掃描所有檔案，如果是檔案則直接檢查
+        # 如果是目錄則掃描所有檔案（包括子目錄），如果是檔案則直接檢查
         if path.is_dir():
-            entries = list(path.iterdir())
-            if not entries:
-                return {
-                    "status": "error",
-                    "message": "Directory is empty",
-                    "latest_time": None,
-                    "latest_file": None,
-                    "is_active": False,
-                    "activity_status": "empty_directory",
-                    "file_count": 0,
-                }
-
-            for entry in entries:
+            # 遞歸地掃描所有檔案，包括子目錄中的檔案
+            for entry in path.rglob("*"):
                 if entry.is_file():
                     file_count += 1
                     file_time = entry.stat().st_mtime

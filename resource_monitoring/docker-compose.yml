@@ -26,7 +26,7 @@ services:
     restart: unless-stopped
     # 僅內部網路使用，不對外暴露端口
     expose:
-      - "8080"
+      - "9101"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -46,7 +46,7 @@ services:
       - "10003:8000"
     environment:
       NODE_EXPORTER_URL: ${NODE_EXPORTER_URL:-http://node_exporter:9100}
-      CADVISOR_URL: ${CADVISOR_URL:-http://cadvisor:8080}
+      CADVISOR_URL: ${CADVISOR_URL:-http://cadvisor:9101}
       # CPU 採樣間隔 (分鐘)
       CPU_SAMPLE_INTERVAL_MINUTES: ${CPU_SAMPLE_INTERVAL_MINUTES:-1}
       # 資料儲存目錄
@@ -61,6 +61,10 @@ services:
     volumes:
       # CPU 採樣資料持久化
       - ./data:/app/data
+      # 宿主機日誌目錄掛載
+      - /var/log/nginx:/var/log/nginx:ro
+      - /var/log/postgresql:/var/log/postgresql:ro
+      - /var/log/journal:/var/log/journal:ro
     depends_on:
       - node_exporter
       - cadvisor

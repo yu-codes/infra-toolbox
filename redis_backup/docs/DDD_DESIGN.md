@@ -9,39 +9,41 @@
 根據 BDD 規格分析，Redis Backup Service 包含以下限界上下文：
 
 ```mermaid
-graph TB
-    subgraph BackupContext["🗄️ 備份上下文 (Backup Context)"]
+flowchart TB
+    subgraph BackupContext["Backup Context"]
         BC1[BackupJob]
         BC2[BackupRecord]
         BC3[Schedule]
     end
-    
-    subgraph RestoreContext["🔄 還原上下文 (Restore Context)"]
+
+    subgraph RestoreContext["Restore Context"]
         RC1[RestoreJob]
         RC2[RestoreRecord]
         RC3[Snapshot]
     end
-    
-    subgraph RetentionContext["🧹 保留策略上下文 (Retention Context)"]
+
+    subgraph RetentionContext["Retention Context"]
         RTC1[RetentionPolicy]
         RTC2[CleanupJob]
     end
-    
-    subgraph MonitoringContext["📊 監控上下文 (Monitoring Context)"]
+
+    subgraph MonitoringContext["Monitoring Context"]
         MC1[HealthCheck]
         MC2[Metrics]
     end
-    
-    subgraph NotificationContext["🔔 通知上下文 (Notification Context)"]
+
+    subgraph NotificationContext["Notification Context"]
         NC1[NotificationChannel]
         NC2[Alert]
     end
-    
-    BackupContext -->|發布事件| NotificationContext
-    RestoreContext -->|發布事件| NotificationContext
-    RetentionContext -->|清理備份| BackupContext
-    MonitoringContext -->|收集指標| BackupContext
-    MonitoringContext -->|收集指標| RestoreContext
+
+    RetentionContext --> |"Enforce retention policies"| BackupContext
+    MonitoringContext --> |"Check backup job health"| BackupContext
+    MonitoringContext --> |"Check restore job health"| RestoreContext
+    BackupContext --> |"Send backup notifications"| NotificationContext
+    RestoreContext --> |"Send restore notifications"| NotificationContext
+
+
 ```
 
 ---

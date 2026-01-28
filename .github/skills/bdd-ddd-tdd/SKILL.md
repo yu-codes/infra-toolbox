@@ -23,12 +23,12 @@ tags:
 
 ```mermaid
 flowchart TB
-    subgraph BDD["🎯 BDD 階段"]
+    subgraph BDD["BDD 階段"]
         A[用戶故事 User Stories] --> B[行為規格 Gherkin Features]
         B --> C[驗收準則 Acceptance Criteria]
     end
     
-    subgraph DDD["🏗️ DDD 階段"]
+    subgraph DDD["DDD 階段"]
         D[識別限界上下文 Bounded Context]
         E[定義聚合根 Aggregate Roots]
         F[設計領域事件 Domain Events]
@@ -36,7 +36,7 @@ flowchart TB
         H[定義實體 Entities]
     end
     
-    subgraph TDD["🧪 TDD 階段"]
+    subgraph TDD["TDD 階段"]
         I[紅燈：撰寫失敗測試]
         J[綠燈：最小實現通過]
         K[重構：優化程式碼]
@@ -47,6 +47,7 @@ flowchart TB
     H --> I
     I --> J --> K
     K --> I
+
 ```
 
 ## 使用指南
@@ -470,13 +471,6 @@ class TestBackupJob:
 3. **為每個領域服務生成測試**
    - 測試服務協調邏輯
    - 測試異常處理
-
-## 參考資源
-
-- [領域驅動設計：軟體核心複雜度的因應之道](https://www.books.com.tw/products/0010743863) - Eric Evans
-- [實現領域驅動設計](https://www.books.com.tw/products/0010776124) - Vaughn Vernon
-- [BDD in Action](https://www.manning.com/books/bdd-in-action) - John Ferguson Smart
-- [Test Driven Development: By Example](https://www.amazon.com/Test-Driven-Development-Kent-Beck/dp/0321146530) - Kent Beck
 
 ## 更新日誌
 

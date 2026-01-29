@@ -2,10 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# 安裝依賴
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# 複製應用程式碼
+COPY main.py .
+COPY core/ ./core/
+COPY services/ ./services/
+COPY routers/ ./routers/
 
 EXPOSE 8000
 

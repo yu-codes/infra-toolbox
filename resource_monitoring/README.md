@@ -453,6 +453,53 @@ fi
 
 ---
 
+## JWT 認證 (Optional)
+
+當啟用 JWT 時，所有端點（除 `/health` 外）都需要在 `Authorization` header 中提供有效的 Bearer token。
+
+### 配置
+
+| 環境變數 | 預設值 | 說明 |
+|---------|--------|------|
+| `JWT_ENABLED` | true | 是否啟用 JWT 認證 |
+| `JWT_EXPIRATION_YEARS` | 3 | JWT Token 過期時間 (年數) |
+| `JWT_SECRET_KEY` | (auto-generated) | JWT 簽名密鑰（若未設定則自動生成） |
+
+### Token 生成與使用
+
+首次啟動時，系統會自動生成 JWT 密鑰和示例 token，保存至 `/app/data/.jwt_token_info.json`：
+
+```json
+{
+  "generated_at": "2026-01-29T10:30:45.123456",
+  "jwt_enabled": true,
+  "algorithm": "HS256",
+  "expiration_years": 3,
+  "expires_at": "2029-01-29T10:30:45.123456",
+  "sample_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "usage": {
+    "curl": "curl -H \"Authorization: Bearer <token>\" http://localhost:10003/system-metrics",
+    "python": "headers = {'Authorization': 'Bearer <token>'}",
+    "javascript": "headers: {'Authorization': `Bearer <token>`}"
+  }
+}
+```
+
+### 使用範例
+
+```bash
+# 1. 生成 token
+TOKEN=$(curl -s http://localhost:10003/health | jq -r '.token // empty')
+
+# 2. 使用 token 訪問受保護的端點
+curl -H "Authorization: Bearer $TOKEN" http://localhost:10003/system-metrics
+
+# 3. Token 預設 3 年後過期
+# 可通過 JWT_EXPIRATION_YEARS 環境變數調整有效期（單位：年）
+```
+
+---
+
 ## 環境變數
 
 | 變數 | 預設值 | 說明 |
@@ -461,6 +508,9 @@ fi
 | `CADVISOR_URL` | http://cadvisor:8080 | cAdvisor 連接 URL |
 | `CPU_SAMPLE_INTERVAL_MINUTES` | 1 | CPU 採樣間隔 (分鐘) |
 | `DATA_DIR` | /app/data | 採樣資料儲存目錄 |
+| `JWT_ENABLED` | true | 是否啟用 JWT 認證 |
+| `JWT_EXPIRATION_YEARS` | 3 | JWT Token 過期時間 (年數) |
+| `JWT_SECRET_KEY` | (auto-generated) | JWT 簽名密鑰（若未設定則自動生成） |
 | `LOG_MONITOR_PATHS` | (empty) | 監控的日誌路徑，多個用分號隔開 |
 | `LOG_MONITOR_ENABLED` | true | 是否啟用日誌監控 |
 | `LOG_ACTIVITY_THRESHOLD_MINUTES` | 5 | 活躍判定的時間閾值 (分鐘) |

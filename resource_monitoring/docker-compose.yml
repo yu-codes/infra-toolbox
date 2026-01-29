@@ -32,6 +32,8 @@ services:
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
+    command:
+      - "--port=9101"
     networks:
       - infra-toolbox-network
 
@@ -51,6 +53,9 @@ services:
       CPU_SAMPLE_INTERVAL_MINUTES: ${CPU_SAMPLE_INTERVAL_MINUTES:-1}
       # 資料儲存目錄
       DATA_DIR: /app/data
+      # JWT 認證配置
+      JWT_ENABLED: ${JWT_ENABLED:-true}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-}
       # Log 監控配置
       # 用分號分隔多個日誌路徑。例如: /var/log/service1;/var/log/service2
       LOG_MONITOR_PATHS: ${LOG_MONITOR_PATHS:-}

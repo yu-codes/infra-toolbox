@@ -1,0 +1,100 @@
+{
+  "previous": {
+    "containers": {
+      "010a5f40715d": {
+        "name": "mingde-ai-agent-dev",
+        "cpu_total_ns": 12454912558000,
+        "timestamp": 1771622857.91062
+      },
+      "29ad3d7f7db8": {
+        "name": "minio-mingde-minio-1",
+        "cpu_total_ns": 1342069198000,
+        "timestamp": 1771622856.962543
+      },
+      "629f45e384a9": {
+        "name": "node_exporter",
+        "cpu_total_ns": 182872737000,
+        "timestamp": 1771622856.945354
+      },
+      "ab8203a64f97": {
+        "name": "monitoring-api",
+        "cpu_total_ns": 749174553000,
+        "timestamp": 1771622856.836082
+      },
+      "ad9ad17283d7": {
+        "name": "cadvisor",
+        "cpu_total_ns": 6123495358000,
+        "timestamp": 1771622856.836381
+      },
+      "ca636874e93c": {
+        "name": "mingde-backend-main-linebot-aws-dev-container",
+        "cpu_total_ns": 11804625161000,
+        "timestamp": 1771622857.479401
+      }
+    },
+    "timestamp": 1771622858.1227198
+  },
+  "current": {
+    "containers": {
+      "010a5f40715d": {
+        "name": "mingde-ai-agent-dev",
+        "cpu_total_ns": 12459550013000,
+        "timestamp": 1771622917.422112
+      },
+      "29ad3d7f7db8": {
+        "name": "minio-mingde-minio-1",
+        "cpu_total_ns": 1342322567000,
+        "timestamp": 1771622916.709688
+      },
+      "629f45e384a9": {
+        "name": "node_exporter",
+        "cpu_total_ns": 182898470000,
+        "timestamp": 1771622909.441675
+      },
+      "ab8203a64f97": {
+        "name": "monitoring-api",
+        "cpu_total_ns": 749328095000,
+        "timestamp": 1771622917.132004
+      },
+      "ad9ad17283d7": {
+        "name": "cadvisor",
+        "cpu_total_ns": 6124525208000,
+        "timestamp": 1771622916.559691
+      },
+      "ca636874e93c": {
+        "name": "mingde-backend-main-linebot-aws-dev-container",
+        "cpu_total_ns": 11808759517000,
+        "timestamp": 1771622918.083936
+      }
+    },
+    "timestamp": 1771622918.2044206
+  },
+  "calculated_usage": {
+    "010a5f40715d": {
+      "name": "mingde-ai-agent-dev",
+      "cpu_usage_percent": 7.79
+    },
+    "29ad3d7f7db8": {
+      "name": "minio-mingde-minio-1",
+      "cpu_usage_percent": 0.42
+    },
+    "629f45e384a9": {
+      "name": "node_exporter",
+      "cpu_usage_percent": 0.05
+    },
+    "ab8203a64f97": {
+      "name": "monitoring-api",
+      "cpu_usage_percent": 0.25
+    },
+    "ad9ad17283d7": {
+      "name": "cadvisor",
+      "cpu_usage_percent": 1.72
+    },
+    "ca636874e93c": {
+      "name": "mingde-backend-main-linebot-aws-dev-container",
+      "cpu_usage_percent": 6.82
+    }
+  },
+  "sample_interval_minutes": 1,
+  "last_updated": "2026-02-20 21:28:38"
+}

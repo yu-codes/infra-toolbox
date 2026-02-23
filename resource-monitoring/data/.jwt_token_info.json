@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-02-18T12:21:42.124067",
+  "jwt_enabled": true,
+  "algorithm": "HS256",
+  "expiration_years": 3,
+  "expires_at": "2029-02-17T12:21:42.124067",
+  "sample_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzYW1wbGUtY2xpZW50IiwiaWF0IjoxNzcxNDE3MzAyLCJleHAiOjE4NjYwMjUzMDJ9.vqr4raI-4IfWDUOLLYb4lNgcAYcvfN5mj_VlH1J8zU4",
+  "usage": {
+    "curl": "curl -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzYW1wbGUtY2xpZW50IiwiaWF0IjoxNzcxNDE3MzAyLCJleHAiOjE4NjYwMjUzMDJ9.vqr4raI-4IfWDUOLLYb4lNgcAYcvfN5mj_VlH1J8zU4\" http://localhost:10003/system-metrics",
+    "python": "headers = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzYW1wbGUtY2xpZW50IiwiaWF0IjoxNzcxNDE3MzAyLCJleHAiOjE4NjYwMjUzMDJ9.vqr4raI-4IfWDUOLLYb4lNgcAYcvfN5mj_VlH1J8zU4'}",
+    "javascript": "headers: {'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzYW1wbGUtY2xpZW50IiwiaWF0IjoxNzcxNDE3MzAyLCJleHAiOjE4NjYwMjUzMDJ9.vqr4raI-4IfWDUOLLYb4lNgcAYcvfN5mj_VlH1J8zU4`}"
+  }
+}

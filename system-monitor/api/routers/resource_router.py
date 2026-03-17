@@ -22,7 +22,7 @@ from services.resource_monitor import (
     select_primary_storage,
 )
 
-router = APIRouter(tags=["Resource Monitoring"])
+router = APIRouter(tags=["System Monitoring"])
 
 
 @router.get("/cpu-config")

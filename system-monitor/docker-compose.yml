@@ -37,7 +37,7 @@ services:
     networks:
       - infra-toolbox-network
 
-  # Resource Monitoring API
+  # System Monitoring API
   monitoring-api:
     build:
       context: ./api

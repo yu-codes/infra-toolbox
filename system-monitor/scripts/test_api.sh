@@ -1,5 +1,5 @@
 #!/bin/bash
-# Resource Monitoring API 測試腳本
+# System Monitoring API 測試腳本
 # 測試 JWT 啟用和關閉機制
 
 API_URL="http://localhost:10003"
@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COMPOSE_DIR="$(dirname "$SCRIPT_DIR")"
 
 echo "======================================"
-echo "Resource Monitoring API 測試"
+echo "System Monitoring API 測試"
 echo "======================================"
 
 # 等待 API 就緒
@@ -40,7 +40,7 @@ test_public_endpoints() {
 
     echo -n "GET /: "
     response=$(curl -s "$API_URL/")
-    if echo "$response" | grep -q "Resource Monitoring API"; then
+    if echo "$response" | grep -q "System Monitoring API"; then
         echo "✓ 通過"
     else
         echo "✗ 失敗: $response"

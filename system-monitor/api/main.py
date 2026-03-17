@@ -1,5 +1,5 @@
 """
-Resource Monitoring API
+System Monitoring API
 
 系統與容器資源監控 API
 - 從 node_exporter 和 cAdvisor 取得系統與容器監控指標
@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
 
     # 啟動 CPU 採樣任務
     task = asyncio.create_task(cpu_sample_task())
-    sys.stderr.write("[APP] Resource Monitoring API started with CPU sampling task\n")
+    sys.stderr.write("[APP] System Monitoring API started with CPU sampling task\n")
     sys.stderr.flush()
 
     yield
@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Resource Monitoring API",
+    title="System Monitoring API",
     description="系統與容器資源監控 API",
     version="2.1.0",
     lifespan=lifespan,
@@ -88,7 +88,7 @@ async def root():
         else "Disabled (all endpoints open)"
     )
     return {
-        "service": "Resource Monitoring API",
+        "service": "System Monitoring API",
         "version": "2.1.0",
         "authentication": auth_mode,
         "jwt_enabled": jwt_manager.is_enabled,

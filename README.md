@@ -16,6 +16,7 @@
 | [postgres_backup_physical](postgres_backup_physical/) | PostgreSQL 物理備份 (WAL/PITR) | - |
 | [minio_backup](minio_backup/) | MinIO 備份還原 | - |
 | [skills](skills/) | AI Agent Skills 範例 (通用格式) | - |
+| [claude-code](claude-code/) | Claude Code 開發大師指南 (安裝/使用/進階) | - |
 
 ## PostgreSQL 備份策略比較
 

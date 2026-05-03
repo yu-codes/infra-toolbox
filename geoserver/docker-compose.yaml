@@ -1,0 +1,70 @@
+services:
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # GeoServer 服務
+  # ──────────────────────────────────────────────────────────────────────────
+  geoserver:
+    build:
+      context: .                  # 建置相對路徑為 geoserver/
+      dockerfile: Dockerfile
+    image: geoserver:custom
+    container_name: geoserver
+    ports:
+      - "8080:8080"
+    volumes:
+      # geoserver_data: 持久化 GeoServer 資料目錄（工作區、樣式、設定等）
+      - geoserver_data:/opt/geoserver_data
+      # shared_data: 與 API 容器共享的圖資上傳目錄
+      - shared_data:/shared
+    environment:
+      - GEOSERVER_DATA_DIR=/opt/geoserver_data
+      # 初始管理員帳號密碼（生產環境請更改）
+      - GEOSERVER_ADMIN_USER=admin
+      - GEOSERVER_ADMIN_PASSWORD=geoserver
+    networks:
+      - geoserver_net
+    healthcheck:
+      # 利用 curl 請求 GeoServer Web UI 頁面來確認服務已就緒
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/geoserver/web/"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    restart: unless-stopped
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # FastAPI 管理 API 服務
+  # ──────────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .                  # 建置相對路徑為 geoserver/
+      dockerfile: api/Dockerfile  # Dockerfile 位於 api/ 子目錄
+    image: geoserver-api:custom
+    container_name: geoserver_api
+    ports:
+      - "8000:8000"
+    volumes:
+      # 挂載相同的共享目錄，路徑與 GeoServer 容器內相同
+      - shared_data:/shared
+    environment:
+      - GEOSERVER_URL=http://geoserver:8080/geoserver
+      - GEOSERVER_USERNAME=admin
+      - GEOSERVER_PASSWORD=geoserver
+      - SHARED_DIR=/shared
+    networks:
+      - geoserver_net
+    depends_on:
+      geoserver:
+        condition: service_healthy   # 等待 GeoServer healthcheck 通過後才啟動
+    restart: unless-stopped
+
+volumes:
+  # 使用 named volume 確保容器刪除後資料仍地
+  geoserver_data:
+    driver: local
+  shared_data:
+    driver: local
+
+networks:
+  geoserver_net:
+    driver: bridge

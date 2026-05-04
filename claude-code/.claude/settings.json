@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "context": {
+    "maxTokens": 8000,
+    "autoTruncate": true,
+    "prioritizeRecentFiles": true
+  },
+  "tools": {
+    "enabled": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash",
+      "Agent"
+    ],
+    "notes": "Keep tool list minimal. Add only when needed."
+  },
+  "defaults": {
+    "agent": "backend-dev",
+    "confirmDestructive": true,
+    "autoFormat": false
+  },
+  "skills": {
+    "path": ".claude/skills"
+  },
+  "agents": {
+    "path": ".claude/agents"
+  },
+  "hooks": {
+    "path": ".claude/hooks"
+  }
+}

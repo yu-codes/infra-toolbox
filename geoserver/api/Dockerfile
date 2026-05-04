@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY geoserverClient.py .
 COPY api/config.py .
 COPY api/main.py .
+COPY api/static/ ./static/
 
 # -----------------------------------------------------------------------
 # 使用者權限設定
@@ -25,5 +26,8 @@ RUN groupadd -g 1000 geoapi \
 USER geoapi
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=10s \
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

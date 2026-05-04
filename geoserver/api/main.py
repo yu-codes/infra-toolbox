@@ -10,10 +10,11 @@ GeoServer 管理 FastAPI 應用程式
   - 共享目錄管理
 """
 
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from config import settings
 from geoserverClient import GeoserverClient, GeoserverException
@@ -25,11 +26,32 @@ from geoserverClient import GeoserverClient, GeoserverException
 app = FastAPI(
     title="GeoServer 管理 API",
     description=(
-        "透過 GeoServer REST API 管理 Workspace、Layer（Vector/Raster）、Style。\n\n"
-        "共享目錄結構（新方法）：`shared_dir/{workspace}/{layer_name}_store/{layer_name}/`"
+        "透過 GeoServer REST API 管理 Workspace、Store、Layer（Vector/Raster）、Style。\n\n"
+        "三層資源結構：`Workspace → Store → Layer`\n\n"
+        "Tag 說明：\n"
+        "- **Workspace** — 工作區 CRUD\n"
+        "- **Store** — Store 查詢 / 刪除\n"
+        "- **Layer** — 圖層列表 / 刪除（格式無關）\n"
+        "- **Layer / Vector** — Shapefile ZIP 上傳、WFS URL\n"
+        "- **Layer / Raster** — GeoTIFF 上傳\n"
+        "- **Style** — 樣式管理\n"
+        "- **Admin** — 備份目錄維護"
     ),
-    version="1.0.0",
+    version="2.0.0",
+    openapi_tags=[
+        {"name": "Workspace"},
+        {"name": "Store"},
+        {"name": "Layer"},
+        {"name": "Layer / Vector"},
+        {"name": "Layer / Raster"},
+        {"name": "Style"},
+        {"name": "Admin"},
+        {"name": "Health"},
+    ],
 )
+
+# 掛載前端靜態檔案（index.html 等）
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +126,7 @@ async def delete_workspace(workspace: str):
 
 @app.get(
     "/workspaces/{workspace}/layers",
-    tags=["Workspace"],
+    tags=["Layer"],
     summary="列出工作區圖層",
 )
 async def list_workspace_layers(workspace: str):
@@ -114,107 +136,151 @@ async def list_workspace_layers(workspace: str):
     return {"workspace": workspace, "layers": layers}
 
 
-# ===========================================================================
-# Layer 管理端點
-# ===========================================================================
-
-
-@app.post(
-    "/layers/shp",
-    tags=["Layer - Vector"],
-    summary="上傳 Shapefile 圖層（分散檔案）",
-    response_description="建立成功訊息",
+@app.get(
+    "/workspaces/{workspace}/stores",
+    tags=["Store"],
+    summary="列出工作區的所有 Store",
 )
-async def upload_shp(
-    workspace: str = Form(..., description="目標工作區（需已存在）"),
-    store_name: str = Form(..., description="DataStore 名稱"),
-    layer_name: str = Form(..., description="圖層名稱"),
-    files: List[UploadFile] = File(
-        ..., description="Shapefile 組件：.shp、.shx、.dbf、.prj"
-    ),
-):
+async def list_workspace_stores(workspace: str):
     """
-    上傳分散的 Shapefile 組件（.shp / .shx / .dbf / .prj）並發布圖層。
+    取得工作區下所有 Store（Datastore + CoverageStore）與其類型。
 
-    - 儲存至 `shared_dir/` 扁平結構
-    - 對應 `upload_layer_shp`（既有行為不變）
+    回傳格式：
+      {"workspace": "demo", "stores": [{"name": "my_store", "type": "vector"}, ...]}
     """
     client = get_client()
-    result = await client.upload_layer_shp(workspace, store_name, layer_name, files)
-    return {"message": result}
+    stores = client.get_workspace_stores(workspace)
+    return {"workspace": workspace, "stores": stores}
+
+
+# ===========================================================================
+# Layer 管理端點（三層結構： workspace → store → layer）
+# ===========================================================================
 
 
 @app.post(
-    "/layers/shp-zip",
-    tags=["Layer - Vector"],
+    "/workspaces/{workspace}/stores/{store_name}/layers/shp-zip",
+    tags=["Layer / Vector"],
     summary="上傳 Shapefile ZIP 圖層",
     response_description="圖層資訊與服務 URL",
 )
 async def upload_shp_zip(
-    workspace: str = Form(..., description="目標工作區（需已存在）"),
-    layer_name: str = Form(
-        ..., description="圖層名稱（同時作為 store 前綴與檔案基底名稱）"
-    ),
+    workspace: str,
+    store_name: str,
+    layer_name: str = Form(..., description="圖層名稱（同時作為檔案基底名稱）"),
     file: UploadFile = File(..., description="ZIP 壓縮檔，內含 .shp/.shx/.dbf/.prj"),
 ):
     """
     上傳包含完整 Shapefile 的 ZIP 並發布圖層。
 
     - ZIP 必須包含：`.shp`、`.shx`、`.dbf`、`.prj`
-    - Store 自動命名為 `{layer_name}_store`
-    - 儲存路徑：`shared_dir/{workspace}/{layer_name}_store/{layer_name}/`
+    - 儲存路徑：`shared_dir/{workspace}/{store_name}/{layer_name}/`
     - 回傳 WMS / WFS URL
     """
     client = get_client()
-    result = await client.upload_layer_shp_zip(workspace, layer_name, file)
+    result = await client.upload_layer_shp_zip(
+        workspace, layer_name, file, store_name=store_name
+    )
     return result
 
 
 @app.post(
-    "/layers/tiff",
-    tags=["Layer - Raster"],
+    "/workspaces/{workspace}/stores/{store_name}/layers/tiff",
+    tags=["Layer / Raster"],
     summary="上傳 GeoTIFF 圖層",
     response_description="圖層資訊與服務 URL",
 )
 async def upload_tiff(
-    workspace: str = Form(..., description="目標工作區（需已存在）"),
-    layer_name: str = Form(
-        ..., description="圖層名稱（同時作為 store 前綴與檔案基底名稱）"
-    ),
+    workspace: str,
+    store_name: str,
+    layer_name: str = Form(..., description="圖層名稱（同時作為檔案基底名稱）"),
     file: UploadFile = File(..., description="GeoTIFF 檔案（.tif 或 .tiff）"),
 ):
     """
     上傳 GeoTIFF 並以 Coverage Store 發布 Raster Layer。
 
     - 支援 `.tif` / `.tiff`
-    - Store 自動命名為 `{layer_name}_store`
-    - 儲存路徑：`shared_dir/{workspace}/{layer_name}_store/{layer_name}/`
+    - 儲存路徑：`shared_dir/{workspace}/{store_name}/{layer_name}/`
     - 回傳 WMS / WCS URL
     """
     client = get_client()
-    result = await client.upload_layer_tiff(workspace, layer_name, file)
+    result = await client.upload_layer_tiff(
+        workspace, layer_name, file, store_name=store_name
+    )
     return result
 
 
 @app.delete(
-    "/layers/{workspace}/{layer_name}",
-    tags=["Layer - Vector", "Layer - Raster"],
-    summary="刪除圖層",
+    "/workspaces/{workspace}/stores/{store_name}/layers/{layer_name}",
+    tags=["Layer"],
+    summary="刪除圖層（保留 Store）",
     response_description="刪除成功訊息",
 )
-async def delete_layer(workspace: str, layer_name: str):
-    """刪除指定工作區下的圖層（遞迴刪除關聯的 store）。"""
+async def delete_layer(workspace: str, store_name: str, layer_name: str):
+    """
+    僅刪除指定圖層，Store 保留。
+
+    適用於 Multi-Layer Store 情境：刪除其中一個 Layer，不影響同一 Store
+    下的其他 Layer。
+
+    若要同時刪除 Layer 與 Store（Dataset 策略），請使用：
+    `DELETE /workspaces/{workspace}/stores/{store_name}/layers/{layer_name}/dataset`
+    """
     client = get_client()
-    result = client.delete_layer(layer_name, workspace)
+    result = client.delete_layer(workspace, layer_name, store_name=store_name)
+    return {"message": result}
+
+
+@app.delete(
+    "/workspaces/{workspace}/stores/{store_name}",
+    tags=["Store"],
+    summary="刪除 Store（遞迴刪除其下所有 Layer）",
+    response_description="刪除成功訊息",
+)
+async def delete_store(
+    workspace: str,
+    store_name: str,
+    store_type: str = "datastore",
+):
+    """
+    刪除指定 Store 及其下所有 Layer（遞迴刪除）。
+
+    - `store_type=datastore`（預設）：向量 Store
+    - `store_type=coveragestore`：柵格 Store
+
+    若只要刪除單一 Layer 而保留 Store，請使用：
+    `DELETE /workspaces/{workspace}/stores/{store_name}/layers/{layer_name}`
+    """
+    client = get_client()
+    result = client.delete_store(workspace, store_name, store_type=store_type)
+    return {"message": result}
+
+
+@app.delete(
+    "/workspaces/{workspace}/stores/{store_name}/layers/{layer_name}/dataset",
+    tags=["Layer"],
+    summary="刪除資料集（Layer + Store 一併刪除）",
+    response_description="刪除成功訊息",
+)
+async def delete_dataset(workspace: str, store_name: str, layer_name: str):
+    """
+    同時刪除 Layer 與其專屬 Store（Dataset 策略的一起刪除）。
+
+    專用於 1:1 Dataset 策略場景，資料集與接入點同步消失。
+    若 Store 下尚有其他 Layer，請改用：
+    `DELETE /workspaces/{workspace}/stores/{store_name}/layers/{layer_name}`
+    """
+    client = get_client()
+    result = client.delete_dataset(workspace, store_name, layer_name)
     return {"message": result}
 
 
 @app.get(
-    "/layers/{workspace}/{layer_name}/wfs-url",
-    tags=["Layer - Vector"],
+    "/workspaces/{workspace}/stores/{store_name}/layers/{layer_name}/wfs-url",
+    tags=["Layer / Vector"],
     summary="取得 WFS GetFeature URL",
 )
-async def get_wfs_url(workspace: str, layer_name: str):
+async def get_wfs_url(workspace: str, store_name: str, layer_name: str):
     """取得圖層的 WFS GetFeature 請求 URL（GeoJSON 格式）。"""
     client = get_client()
     url = client.get_layer_wfs_url(layer_name, workspace)
@@ -256,13 +322,14 @@ async def list_styles(workspace: Optional[str] = None):
 
 
 @app.put(
-    "/layers/{workspace}/{layer_name}/style",
+    "/workspaces/{workspace}/stores/{store_name}/layers/{layer_name}/style",
     tags=["Style"],
     summary="設定圖層預設樣式",
     response_description="設定成功訊息",
 )
 async def publish_style(
     workspace: str,
+    store_name: str,
     layer_name: str,
     style_name: str = Form(..., description="要套用的樣式名稱"),
 ):
@@ -296,38 +363,35 @@ async def delete_style(
 
 
 @app.delete(
-    "/admin/shared-dir",
+    "/admin/layer-dir/{workspace}/{store_name}/{layer_name}",
     tags=["Admin"],
-    summary="清理共享目錄（扁平結構）",
+    summary="清理圖層目錄",
     response_description="清理成功訊息",
 )
-async def clear_shared_dir(base_filename: Optional[str] = None):
+async def clear_layer_dir(workspace: str, store_name: str, layer_name: str):
     """
-    清理共享目錄根層級的扁平結構檔案（對應 upload_layer_shp 使用的舊結構）。
+    清理三層目錄結構下的圖層資料夾。
 
-    - 若指定 base_filename，刪除 `{base_filename}.*` 所有副檔名檔案
-    - 若未指定，刪除根目錄下所有直接子檔案（不含子目錄）
+    刪除 `shared_dir/{workspace}/{store_name}/{layer_name}/` 整個目錄。
     """
     client = get_client()
-    result = client.clear_shared_directory(base_filename)
+    result = client.clear_layer_directory(workspace, store_name, layer_name)
     return {"message": result}
 
 
-@app.delete(
-    "/admin/layer-dir/{workspace}/{layer_name}",
-    tags=["Admin"],
-    summary="清理圖層目錄（新目錄結構）",
-    response_description="清理成功訊息",
-)
-async def clear_layer_dir(workspace: str, layer_name: str):
-    """
-    清理新目錄結構下的圖層資料夾。
+# ---------------------------------------------------------------------------
+# 前端入口
+# ---------------------------------------------------------------------------
 
-    刪除 `shared_dir/{workspace}/{layer_name}_store/{layer_name}/` 整個目錄。
-    """
-    client = get_client()
-    result = client.clear_layer_directory(workspace, layer_name)
-    return {"message": result}
+
+@app.get("/", include_in_schema=False)
+async def serve_frontend():
+    """提供前端管理介面（index.html）。"""
+    response = FileResponse("static/index.html")
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -339,3 +403,63 @@ async def clear_layer_dir(workspace: str, layer_name: str):
 async def health_check():
     """確認 API 服務是否正常運行。"""
     return {"status": "ok", "service": "geoserver-api"}
+
+
+# ---------------------------------------------------------------------------
+# 圖層聚合（供前端使用）
+# ---------------------------------------------------------------------------
+
+
+@app.get(
+    "/layers",
+    tags=["Layer"],
+    summary="列出所有工作區的圖層",
+)
+async def list_all_layers():
+    """
+    取得所有工作區的所有圖層（含 workspace 資訊），供前端地圖面板使用。
+
+    回傳格式：
+      {"layers": [{"workspace": "demo", "layer": "taiwan_grid", "type": "vector"}, ...]}
+    """
+    client = get_client()
+    try:
+        workspaces = client.get_workspaces()
+    except GeoserverException:
+        return {"layers": []}
+
+    result = []
+    for ws in workspaces:
+        try:
+            layers = client.get_workspace_layers(ws)
+            datastores = set(client.get_workspace_datastores(ws))
+            coveragestores = set(client.get_workspace_coveragestores(ws))
+            for layer in layers:
+                store_name = f"{layer}_store"
+                if store_name in coveragestores:
+                    layer_type = "raster"
+                elif store_name in datastores:
+                    layer_type = "vector"
+                else:
+                    # Fallback: substring match when naming convention differs
+                    raster_match = next((s for s in coveragestores if layer in s), None)
+                    vector_match = next((s for s in datastores if layer in s), None)
+                    if raster_match:
+                        store_name = raster_match
+                        layer_type = "raster"
+                    elif vector_match:
+                        store_name = vector_match
+                        layer_type = "vector"
+                    else:
+                        layer_type = "vector"  # last-resort default
+                result.append(
+                    {
+                        "workspace": ws,
+                        "layer": layer,
+                        "type": layer_type,
+                        "store": store_name,
+                    }
+                )
+        except GeoserverException:
+            continue
+    return {"layers": result}

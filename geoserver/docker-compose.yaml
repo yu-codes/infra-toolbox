@@ -56,6 +56,12 @@ services:
     depends_on:
       geoserver:
         condition: service_healthy   # 等待 GeoServer healthcheck 通過後才啟動
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
 volumes:

@@ -2,8 +2,7 @@
 GeoserverClient - GeoServer 發布管理模組
 
 【模組定位】
-  本模組封裝 GeoServer REST API，提供完整的 Workspace / Store / Layer
-  三層資源生命週期管理，以及本地備份目錄的維護。
+  本模組封裝 GeoServer REST API，提供完整的 Workspace / Store / Layer 三層資源生命週期管理。
 
 【GeoServer 原生資源模型】
   Workspace → Store (DataStore / CoverageStore) → Resource → Layer
@@ -23,14 +22,6 @@ GeoserverClient - GeoServer 發布管理模組
 
   ⚠️ 命名格式 {layer_name}_store 是慣例（Convention），不是系統強制限制。
 
-【shared_dir 責任邊界（重要）】
-  shared_dir/{workspace}/{store_name}/{layer_name}/ 的用途：
-    ✅ 營運備份：保存最後一次上傳的原始檔案，供回溯核查
-    ✅ Debug / 稽核：快速確認哪些資料集已發布至 GeoServer
-    ❌ 非 GeoServer 真實資料來源（data_dir）
-    ❌ 從此目錄刪除檔案，不影響 GeoServer 的即時服務
-  ⚠️ 警告：若 GeoServer 的 dataDir 恰好位於同一掛載路徑，
-          請確保兩者目錄路徑不重疊，否則刪除備份可能誤刪服務資料。
 
 支援功能：
   - Workspace 管理（建立、刪除、查詢）
@@ -41,14 +32,6 @@ GeoserverClient - GeoServer 發布管理模組
 
 三層資源結構（GeoServer 端）：
   Workspace  →  Store (DataStore / CoverageStore)  →  Layer
-
-備份目錄（本地端，僅供備援稽核）：
-  shared_dir/
-    └── {workspace}/
-        └── {store_name}/
-            └── {layer_name}/
-                ├── *.shp / *.shx / *.dbf / *.prj  (vector)
-                └── *.tif / *.tiff                  (raster)
 """
 
 import io
@@ -92,13 +75,11 @@ class GeoserverClient:
        upload_layer_shp_zip(workspace, layer_name, file,
                             store_name="shared_store", reuse_store=True) # store 重用
 
-    命名慣例 {layer_name}_store 是 Convention，不是系統強制。
-
     Thread safety：本類別不持有狀態（除初始化參數外），可安全用於
     FastAPI 的 per-request 依賴注入模式。
     """
 
-    def __init__(self, service_url: str, username: str, password: str, shared_dir: str):
+    def __init__(self, service_url: str, username: str, password: str):
         """
         初始化 GeoServer 發布管理器。
 
@@ -106,14 +87,10 @@ class GeoserverClient:
             service_url: GeoServer 服務根 URL（例如 http://geoserver:8080/geoserver）
             username:    GeoServer 管理員帳號
             password:    GeoServer 管理員密碼
-            shared_dir:  備份目錄路徑（API 容器可寫入的掛載路徑）
-                         ⚠️ 此目錄僅作備援稽核用途，不是 GeoServer 的資料來源。
-                            刪除此目錄中的檔案不影響 GeoServer 已發布的服務。
         """
         self.service_url = service_url.rstrip("/")
         self.username = username
         self.password = password
-        self.shared_dir = shared_dir
 
     def create_workspace(self, workspace: str) -> str:
         """
@@ -316,13 +293,6 @@ class GeoserverClient:
                         zf_out.writestr(f"{layer_name}{ext}", zf_in.read(name))
         repackaged_data = repackaged_zip.getvalue()
 
-        # 備份至共享目錄（供外部存取或除錯用）
-        target_dir = Path(self.shared_dir) / workspace / resolved_store / layer_name
-        target_dir.mkdir(parents=True, exist_ok=True)
-        with zipfile.ZipFile(io.BytesIO(repackaged_data)) as zf:
-            for name in zf.namelist():
-                (target_dir / name).write_bytes(zf.read(name))
-
         # 直接上傳 ZIP 至 GeoServer（不依賴 file:// URI，避免 sandbox 限制）
         url = f"{self.service_url}/rest/workspaces/{workspace}/datastores/{resolved_store}/file.shp"
         headers = {"Content-type": "application/zip"}
@@ -380,11 +350,6 @@ class GeoserverClient:
 
         命名慣例 {layer_name}_store 是 Convention（非強制）。
 
-        【備份行為】
-          GeoTIFF 原始檔備份至：
-            shared_dir/{workspace}/{store_name}/{layer_name}/{layer_name}.tif
-          ⚠️ 此備份不影響 GeoServer 的服務狀態。
-
         支援副檔名：.tif、.tiff，不嘗試轉檔，不依賴 PostGIS。
 
         GeoServer REST：
@@ -412,12 +377,6 @@ class GeoserverClient:
 
         # 讀取 GeoTIFF 內容
         content = await file.read()
-
-        # 備份至共享目錄（供外部存取或除錯用）
-        target_dir = Path(self.shared_dir) / workspace / resolved_store / layer_name
-        target_dir.mkdir(parents=True, exist_ok=True)
-        target_file = target_dir / f"{layer_name}{ext}"
-        target_file.write_bytes(content)
 
         # 直接上傳 GeoTIFF 至 GeoServer（不依賴 file:// URI，避免 sandbox 限制）
         url = (
@@ -462,7 +421,7 @@ class GeoserverClient:
         self, workspace: str, layer_name: str, store_name: Optional[str] = None
     ) -> str:
         """
-        僅刪除指定 Layer（保留 Store）並清除本地備份。
+        僅刪除指定 Layer（保留 Store）
 
         適用於 Multi-Layer Store 情境：刪除其中一個 Layer，不影響同一 Store
         下的其他 Layer。若 Store 下僅此一個 Layer，建議改用 delete_dataset()。
@@ -471,18 +430,10 @@ class GeoserverClient:
           只刪除 Layer 資源，Store 保留。
           REST: DELETE /rest/workspaces/{ws}/layers/{layer}（不加 recurse）
 
-        【備份目錄清理】
-          若傳入 store_name，同步清除 shared_dir/{ws}/{store}/{layer}/。
-          ⚠️ 此操作僅清除備份副本，不影響 GeoServer 服務。
         """
         url = f"{self.service_url}/rest/workspaces/{workspace}/layers/{layer_name}"
         r = requests.delete(url, auth=(self.username, self.password))
         if r.status_code == 200:
-            if store_name:
-                try:
-                    self.clear_layer_directory(workspace, store_name, layer_name)
-                except Exception as e:
-                    return f"圖層 {layer_name} 刪除成功，但清除目錄有警告: {e}"
             return f"圖層 {layer_name} 刪除成功（Store 保留）"
         raise GeoserverException(r.status_code, r.content)
 
@@ -528,10 +479,6 @@ class GeoserverClient:
         【GeoServer 行為】
           先刪除 Layer 資源，再遞迴刪除 Store，最後清除備份目錄。
           自動偵測 Store 類型（datastore / coveragestore）。
-
-        【備份目錄清理】
-          同步刪除 shared_dir/{workspace}/{store_name}/{layer_name}/。
-          ⚠️ 此操作僅清除備份副本。
         """
         errors = []
 
@@ -551,12 +498,6 @@ class GeoserverClient:
             except GeoserverException as e:
                 if e.status_code != 404:
                     errors.append(f"Store 刪除失敗({st}): {e.message}")
-
-        # 3. 清除備份目錄
-        try:
-            self.clear_layer_directory(workspace, store_name, layer_name)
-        except Exception as e:
-            errors.append(f"備份目錄清除失敗: {e}")
 
         if errors:
             return f"資料集 {layer_name} 已刪除，但有警告: {'; '.join(errors)}"
@@ -696,27 +637,3 @@ class GeoserverClient:
             f"typeName={workspace}:{layer_name}&"
             f"outputFormat=application/json"
         )
-
-    def clear_layer_directory(
-        self, workspace: str, store_name: str, layer_name: str
-    ) -> str:
-        """
-        清除本地備份目錄中的圖層資料夾（idempotent）。
-
-        刪除 shared_dir/{workspace}/{store_name}/{layer_name}/ 整個目錄。
-
-        【用途定位】
-          此方法操作的是「備援稽核目錄」，而非 GeoServer 的 dataDir。
-          呼叫此方法不會影響 GeoServer 正在提供服務的 Layer 或 Store。
-          通常由 delete_layer() 自動呼叫，或在管理端點中手動觸發。
-
-        【冪等性】
-          目錄不存在時不報錯，直接回傳提示訊息。
-        """
-        import shutil
-
-        target_dir = Path(self.shared_dir) / workspace / store_name / layer_name
-        if target_dir.exists():
-            shutil.rmtree(target_dir)
-            return f"已刪除圖層目錄: {target_dir}"
-        return f"圖層目錄不存在，無需清理: {target_dir}"

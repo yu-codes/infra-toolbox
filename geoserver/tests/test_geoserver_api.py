@@ -647,17 +647,3 @@ class TestDeleteLayer:
         r = client.get(f"/workspaces/{TEST_WORKSPACE}/stores")
         store_names = [s["name"] for s in r.json()["stores"]]
         assert TEST_STORE_TIFF not in store_names
-
-
-# ===========================================================================
-# 共享目錄管理
-# ===========================================================================
-
-
-class TestAdminEndpoints:
-    def test_clear_layer_dir_nonexistent(self):
-        """清理不存在的圖層目錄應回傳成功（idempotent）。"""
-        r = client.delete(
-            f"/admin/layer-dir/{TEST_WORKSPACE}/nonexistent_store/nonexistent_layer"
-        )
-        assert r.status_code == 200

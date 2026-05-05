@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     geoserver_url: str = "http://localhost:8080/geoserver"
     geoserver_username: str = "admin"
     geoserver_password: str = "geoserver"
-    shared_dir: str = "/shared"
 
     model_config = {"env_file": ".env", "case_sensitive": False}
 

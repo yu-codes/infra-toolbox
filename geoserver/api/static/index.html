@@ -12,15 +12,29 @@
     html, body { width: 100%; height: 100%; font-family: system-ui, sans-serif; }
     .layout { display: flex; width: 100%; height: 100%; background: var(--bg); }
     /* ── Sidebar ── */
-    #sidebar { width: 340px; min-width: 340px; height: 100%; overflow-y: auto; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; color: var(--text); }
+    #sidebar { width: 340px; min-width: 340px; height: 100%; overflow: hidden; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; color: var(--text); }
     .logo { padding: 18px 18px 14px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
     .logo-sub { font-size: 11px; color: var(--muted); font-weight: 400; }
     #status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); margin-left: auto; flex-shrink: 0; }
     #status-dot.ok  { background: var(--green); box-shadow: 0 0 6px var(--green); }
     #status-dot.err { background: var(--red);   box-shadow: 0 0 6px var(--red); }
-    .section { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+    /* ── Workspace section (fixed) ── */
+    .workspace-section { padding: 14px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .section { padding: 14px 18px; }
     .section-title { font-size: 10px; font-weight: 700; letter-spacing: .12em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    /* ── Workspace Select ── */
+    select {
+      width: 100%; padding: 7px 28px 7px 10px;
+      background: var(--bg);
+      border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-size: 13px; outline: none; cursor: pointer;
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236e738d' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+    }
+    select:focus { border-color: var(--accent); }
+    select option { background: var(--surface); color: var(--text); }
     /* ── Form ── */
     .field-row { display: flex; gap: 8px; margin-bottom: 7px; }
     .field-group { display: flex; flex-direction: column; gap: 3px; flex: 1; }
@@ -39,13 +53,92 @@
     .dropzone:hover, .dropzone.drag { border-color: var(--accent); color: var(--accent); }
     .dropzone input { display: none; }
     .dropzone .fname { margin-top: 4px; color: var(--text); font-weight: 500; word-break: break-all; }
-    /* ── Workspace chips ── */
-    .ws-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
-    .ws-chip { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: var(--bg); color: var(--muted); border: 1px solid var(--border); cursor: pointer; }
-    .ws-chip:hover { border-color: var(--accent); color: var(--accent); }
+    /* ── Sidebar Main: 1:1 flex split ── */
+    .sidebar-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    /* ── Upload Wrap (top half) ── */
+    .upload-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .upload-header {
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 14px 18px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    .upload-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-gutter: stable both-edges;
+    }
+    /* ── Layer List (bottom half) ── */
+    .layer-list-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .layer-header {
+      flex-shrink: 0;
+      padding: 14px 18px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    .layer-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-gutter: stable both-edges;
+    }
+    .layer-item {
+      position: relative;
+      z-index: 1;
+    }
+    #layer-list {
+      padding: 10px 10px 14px 10px;
+    }
+    /* ── Scrollbar (WebKit: Chrome/Safari) ── */
+    .upload-scroll::-webkit-scrollbar,
+    .layer-scroll::-webkit-scrollbar {
+      width: 8px;
+    }
+    .upload-scroll::-webkit-scrollbar-track,
+    .layer-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .upload-scroll::-webkit-scrollbar-thumb,
+    .layer-scroll::-webkit-scrollbar-thumb {
+      background: #404558;
+      border-radius: 4px;
+    }
+    .upload-scroll::-webkit-scrollbar-thumb:hover,
+    .layer-scroll::-webkit-scrollbar-thumb:hover {
+      background: #505865;
+    }
+    /* ── Scrollbar (Firefox) ── */
+    .upload-scroll,
+    .layer-scroll {
+      scrollbar-width: thin;
+      scrollbar-color: #404558 transparent;
+    }
     /* ── Layer List ── */
-    .layer-list-wrap { flex: 1; overflow-y: auto; min-height: 0; }
-    .layer-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; }
+    .layer-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 10px; border-radius: 8px; border-bottom: 1px solid var(--border); }
+    .layer-item:last-child { border-bottom: none; }
     .layer-item:hover { background: var(--bg); }
     .layer-info { flex: 1; min-width: 0; }
     .layer-name { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -82,77 +175,80 @@
       <div>GeoServer 管理<div class="logo-sub">圖層上傳 &amp; 地圖預覽</div></div>
       <div id="status-dot" title="API 連線狀態"></div>
     </div>
-    <!-- Workspace -->
-    <div class="section">
+    <!-- Workspace Dropdown (fixed) -->
+    <div class="workspace-section">
       <div class="section-title"><i class="bi bi-folder2-open"></i> 工作區</div>
-      <div style="display:flex;gap:8px;">
-        <input type="text" id="ws-input" placeholder="輸入工作區名稱" value="demo">
-        <button class="btn btn-accent" onclick="createWorkspace()">建立</button>
-      </div>
-      <div class="ws-chips" id="ws-chips"></div>
+      <select id="workspace-select"></select>
     </div>
-    <!-- Upload SHP ZIP -->
-    <div class="section">
-      <div class="section-title"><i class="bi bi-file-zip"></i> 上傳 Shapefile ZIP</div>
-      <div class="field-row">
-        <div class="field-group">
-          <div class="field-label">工作區</div>
-          <input type="text" id="shp-ws" placeholder="demo" value="demo">
+    <!-- Scrollable Main Area (flex 1:1 split) -->
+    <div class="sidebar-main">
+      <!-- Upload (top half) -->
+      <div class="upload-wrap">
+        <div class="upload-header">
+          <div class="section-title" style="margin-bottom:0;"><i class="bi bi-cloud-upload"></i> 上傳圖層</div>
         </div>
-        <div class="field-group">
-          <div class="field-label">圖層名稱</div>
-          <input type="text" id="shp-layer" placeholder="my_layer" oninput="syncStore('shp')">
+        <div class="upload-scroll">
+      <!-- Upload SHP ZIP -->
+      <div class="section">
+        <div class="section-title"><i class="bi bi-file-zip"></i> Shapefile ZIP</div>
+        <div class="field-row">
+          <div class="field-group">
+            <div class="field-label">圖層名稱</div>
+            <input type="text" id="shp-layer" placeholder="my_layer" oninput="syncStore('shp')">
+          </div>
         </div>
-      </div>
-      <div class="field-group" style="margin-bottom:7px;">
-        <div class="field-label">Store 名稱（留空自動產生）</div>
-        <input type="text" id="shp-store" placeholder="my_layer_store">
-      </div>
-      <div class="dropzone" id="shp-zone" onclick="document.getElementById('shp-file').click()">
-        <input type="file" id="shp-file" accept=".zip" onchange="onFileSelect(this,'shp')">
-        <i class="bi bi-upload" style="font-size:18px"></i>
-        <div class="fname" id="shp-fname">拖放或點擊選擇 .zip</div>
-      </div>
-      <button class="btn btn-accent btn-block" id="shp-btn" onclick="uploadShp()">
-        <i class="bi bi-cloud-upload"></i> 上傳圖層
-      </button>
-    </div>
-    <!-- Upload GeoTIFF -->
-    <div class="section">
-      <div class="section-title"><i class="bi bi-image"></i> 上傳 GeoTIFF</div>
-      <div class="field-row">
-        <div class="field-group">
-          <div class="field-label">工作區</div>
-          <input type="text" id="tiff-ws" placeholder="demo" value="demo">
+        <div class="field-group" style="margin-bottom:7px;">
+          <div class="field-label">Store 名稱（留空自動產生）</div>
+          <input type="text" id="shp-store" placeholder="my_layer_store">
         </div>
-        <div class="field-group">
-          <div class="field-label">圖層名稱</div>
-          <input type="text" id="tiff-layer" placeholder="my_raster" oninput="syncStore('tiff')">
+        <div class="dropzone" id="shp-zone" onclick="document.getElementById('shp-file').click()">
+          <input type="file" id="shp-file" accept=".zip" onchange="onFileSelect(this,'shp')">
+          <i class="bi bi-upload" style="font-size:18px"></i>
+          <div class="fname" id="shp-fname">拖放或點擊選擇 .zip</div>
         </div>
-      </div>
-      <div class="field-group" style="margin-bottom:7px;">
-        <div class="field-label">Store 名稱（留空自動產生）</div>
-        <input type="text" id="tiff-store" placeholder="my_raster_store">
-      </div>
-      <div class="dropzone" id="tiff-zone" onclick="document.getElementById('tiff-file').click()">
-        <input type="file" id="tiff-file" accept=".tif,.tiff" onchange="onFileSelect(this,'tiff')">
-        <i class="bi bi-upload" style="font-size:18px"></i>
-        <div class="fname" id="tiff-fname">拖放或點擊選擇 .tif / .tiff</div>
-      </div>
-      <button class="btn btn-green btn-block" id="tiff-btn" onclick="uploadTiff()">
-        <i class="bi bi-cloud-upload"></i> 上傳圖層
-      </button>
-    </div>
-    <!-- Layer List -->
-    <div class="section layer-list-wrap">
-      <div class="section-title">
-        <i class="bi bi-layers"></i> 圖層列表
-        <button class="icon-btn muted" style="margin-left:auto;font-size:13px;" onclick="refreshLayers()" title="重新整理">
-          <i class="bi bi-arrow-clockwise"></i>
+        <button class="btn btn-accent btn-block" id="shp-btn" onclick="uploadShp()">
+          <i class="bi bi-cloud-upload"></i> 上傳圖層
         </button>
       </div>
-      <div id="layer-list"><div class="empty-hint">點擊 <i class="bi bi-arrow-clockwise"></i> 載入圖層</div></div>
-    </div>
+      <!-- Upload GeoTIFF -->
+      <div class="section">
+        <div class="section-title"><i class="bi bi-image"></i> GeoTIFF</div>
+        <div class="field-row">
+          <div class="field-group">
+            <div class="field-label">圖層名稱</div>
+            <input type="text" id="tiff-layer" placeholder="my_raster" oninput="syncStore('tiff')">
+          </div>
+        </div>
+        <div class="field-group" style="margin-bottom:7px;">
+          <div class="field-label">Store 名稱（留空自動產生）</div>
+          <input type="text" id="tiff-store" placeholder="my_raster_store">
+        </div>
+        <div class="dropzone" id="tiff-zone" onclick="document.getElementById('tiff-file').click()">
+          <input type="file" id="tiff-file" accept=".tif,.tiff" onchange="onFileSelect(this,'tiff')">
+          <i class="bi bi-upload" style="font-size:18px"></i>
+          <div class="fname" id="tiff-fname">拖放或點擊選擇 .tif / .tiff</div>
+        </div>
+        <button class="btn btn-green btn-block" id="tiff-btn" onclick="uploadTiff()">
+          <i class="bi bi-cloud-upload"></i> 上傳圖層
+        </button>
+      </div>
+        </div><!-- end upload-scroll -->
+      </div><!-- end upload-wrap -->
+      <!-- Layer List -->
+      <div class="layer-list-wrap">
+        <div class="layer-header">
+          <div class="section-title" style="margin-bottom: 0;">
+            <i class="bi bi-layers"></i> 圖層列表
+            <button class="icon-btn muted" style="margin-left:auto;font-size:13px;" onclick="refreshLayers()" title="重新整理">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+          </div>
+        </div>
+        <div class="layer-scroll">
+          <div id="layer-list"><div class="empty-hint">點擊 <i class="bi bi-arrow-clockwise"></i> 載入圖層</div></div>
+        </div>
+      </div>
+    </div><!-- end sidebar-main -->
     <div class="footer-hint">
       API 文件：<a href="/docs" target="_blank">/docs</a>
       &nbsp;·&nbsp;GeoServer：<a href="http://localhost:8080/geoserver" target="_blank">:8080</a>
@@ -166,8 +262,7 @@
 <script>
   // ── Constants & State ────────────────────────────────────────────────────
   const GEO = 'http://localhost:8080/geoserver';
-  let map = null;
-  /** Layers known to exist on the server: [{workspace, layer, type, store}] */
+  let map = null;  let currentWorkspace = 'demo';  /** Layers known to exist on the server: [{workspace, layer, type, store}] */
   let serverLayers = [];
   /** Layers currently rendered on the Leaflet map: key → {wmsLayer, visible, ...} */
   let activeLayers = {};
@@ -228,30 +323,44 @@
     document.getElementById(`${type}-store`).value = layer ? `${layer}_store` : '';
   }
 
-  /** Click a workspace chip to fill all workspace inputs */
-  function fillWs(ws) {
-    ['ws-input', 'shp-ws', 'tiff-ws'].forEach(id => document.getElementById(id).value = ws);
-  }
-
   // ── Workspace ────────────────────────────────────────────────────────────
-  async function createWorkspace() {
-    const ws = document.getElementById('ws-input').value.trim();
-    if (!ws) return toast('請輸入工作區名稱', 'err');
-    const fd = new FormData(); fd.append('workspace', ws);
+  async function createWorkspace(name) {
+    const fd = new FormData(); fd.append('workspace', name);
     try {
       const r = await fetch('/workspaces', { method: 'POST', body: fd });
       const d = await r.json();
-      r.ok ? (toast(d.message), loadWorkspaces()) : toast(d.detail || '建立失敗', 'err');
-    } catch (e) { toast('錯誤: ' + e.message, 'err'); }
+      if (r.ok) { toast(d.message); return true; }
+      else { toast(d.detail || '建立失敗', 'err'); return false; }
+    } catch (e) { toast('錯誤: ' + e.message, 'err'); return false; }
   }
 
   async function loadWorkspaces() {
     try {
       const d = await fetch('/workspaces').then(r => r.json());
-      document.getElementById('ws-chips').innerHTML =
-        (d.workspaces || []).map(w =>
-          `<span class="ws-chip" onclick="fillWs('${w}')" title="點擊填入工作區">${w}</span>`
-        ).join('');
+      const workspaces = d.workspaces || [];
+      const select = document.getElementById('workspace-select');
+
+      select.innerHTML = workspaces.map(w =>
+        `<option value="${w}"${w === currentWorkspace ? ' selected' : ''}>${w}</option>`
+      ).join('') + `<option value="__create__">➕ 新增工作區</option>`;
+
+      select.onchange = async (e) => {
+        if (e.target.value === '__create__') {
+          const name = prompt('輸入工作區名稱');
+          if (!name) { select.value = currentWorkspace; return; }
+          const ok = await createWorkspace(name);
+          await loadWorkspaces();
+          if (ok) {
+            document.getElementById('workspace-select').value = name;
+            currentWorkspace = name;
+          } else {
+            document.getElementById('workspace-select').value = currentWorkspace;
+          }
+        } else {
+          currentWorkspace = e.target.value;
+        }
+        refreshLayers();
+      };
     } catch (e) { console.error('loadWorkspaces:', e); }
   }
 
@@ -262,12 +371,12 @@
   }
 
   async function uploadShp() {
-    const ws    = document.getElementById('shp-ws').value.trim();
+    const ws    = currentWorkspace;
     const layer = document.getElementById('shp-layer').value.trim();
     const store = document.getElementById('shp-store').value.trim() || `${layer}_store`;
     const file  = document.getElementById('shp-file').files[0];
-    if (!ws || !layer) return toast('請填寫工作區與圖層名稱', 'err');
-    if (!file)         return toast('請選擇 ZIP 檔案', 'err');
+    if (!layer) return toast('請填寫圖層名稱', 'err');
+    if (!file)  return toast('請選擇 ZIP 檔案', 'err');
     setLoading('shp-btn', true);
     const fd = new FormData(); fd.append('layer_name', layer); fd.append('file', file);
     try {
@@ -282,12 +391,12 @@
   }
 
   async function uploadTiff() {
-    const ws    = document.getElementById('tiff-ws').value.trim();
+    const ws    = currentWorkspace;
     const layer = document.getElementById('tiff-layer').value.trim();
     const store = document.getElementById('tiff-store').value.trim() || `${layer}_store`;
     const file  = document.getElementById('tiff-file').files[0];
-    if (!ws || !layer) return toast('請填寫工作區與圖層名稱', 'err');
-    if (!file)         return toast('請選擇 TIFF 檔案', 'err');
+    if (!layer) return toast('請填寫圖層名稱', 'err');
+    if (!file)  return toast('請選擇 TIFF 檔案', 'err');
     setLoading('tiff-btn', true);
     const fd = new FormData(); fd.append('layer_name', layer); fd.append('file', file);
     try {
@@ -360,14 +469,15 @@
     } catch (e) { console.error('refreshLayers:', e); }
   }
 
-  // ── Render Layer List ────────────────────────────────────────────────────
+  // ── Render Layer List (filtered by currentWorkspace) ─────────────────
   function renderLayerList() {
     const el = document.getElementById('layer-list');
-    if (!serverLayers.length) {
+    const filtered = serverLayers.filter(l => l.workspace === currentWorkspace);
+    if (!filtered.length) {
       el.innerHTML = '<div class="empty-hint">尚無圖層，請先上傳或點擊重新整理</div>';
       return;
     }
-    el.innerHTML = serverLayers.map(({ workspace: ws, layer, type, store }) => {
+    el.innerHTML = filtered.map(({ workspace: ws, layer, type, store }) => {
       const key    = `${ws}:${layer}`;
       const active = activeLayers[key];
       const badgeCls = type === 'raster' ? 'badge-raster' : 'badge-vector';

@@ -14,8 +14,6 @@ services:
     volumes:
       # geoserver_data: 持久化 GeoServer 資料目錄（工作區、樣式、設定等）
       - geoserver_data:/opt/geoserver_data
-      # shared_data: 與 API 容器共享的圖資上傳目錄
-      - shared_data:/shared
     environment:
       - GEOSERVER_DATA_DIR=/opt/geoserver_data
       # 初始管理員帳號密碼（生產環境請更改）
@@ -43,14 +41,10 @@ services:
     container_name: geoserver_api
     ports:
       - "8000:8000"
-    volumes:
-      # 挂載相同的共享目錄，路徑與 GeoServer 容器內相同
-      - shared_data:/shared
     environment:
       - GEOSERVER_URL=http://geoserver:8080/geoserver
       - GEOSERVER_USERNAME=admin
       - GEOSERVER_PASSWORD=geoserver
-      - SHARED_DIR=/shared
     networks:
       - geoserver_net
     depends_on:
@@ -65,10 +59,8 @@ services:
     restart: unless-stopped
 
 volumes:
-  # 使用 named volume 確保容器刪除後資料仍地
+  # 使用 named volume 確保容器刪除後資料仍在
   geoserver_data:
-    driver: local
-  shared_data:
     driver: local
 
 networks:

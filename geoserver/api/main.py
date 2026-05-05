@@ -35,7 +35,6 @@ app = FastAPI(
         "- **Layer / Vector** — Shapefile ZIP 上傳、WFS URL\n"
         "- **Layer / Raster** — GeoTIFF 上傳\n"
         "- **Style** — 樣式管理\n"
-        "- **Admin** — 備份目錄維護"
     ),
     version="2.0.0",
     openapi_tags=[
@@ -45,7 +44,6 @@ app = FastAPI(
         {"name": "Layer / Vector"},
         {"name": "Layer / Raster"},
         {"name": "Style"},
-        {"name": "Admin"},
         {"name": "Health"},
     ],
 )
@@ -64,7 +62,6 @@ def get_client() -> GeoserverClient:
         service_url=settings.geoserver_url,
         username=settings.geoserver_username,
         password=settings.geoserver_password,
-        shared_dir=settings.shared_dir,
     )
 
 
@@ -354,28 +351,6 @@ async def delete_style(
     """刪除指定樣式。purge=true 時同時刪除 SLD 檔案；recurse=true 時強制刪除（即使被使用中）。"""
     client = get_client()
     result = client.delete_style(style_name, workspace, purge, recurse)
-    return {"message": result}
-
-
-# ===========================================================================
-# 管理端點
-# ===========================================================================
-
-
-@app.delete(
-    "/admin/layer-dir/{workspace}/{store_name}/{layer_name}",
-    tags=["Admin"],
-    summary="清理圖層目錄",
-    response_description="清理成功訊息",
-)
-async def clear_layer_dir(workspace: str, store_name: str, layer_name: str):
-    """
-    清理三層目錄結構下的圖層資料夾。
-
-    刪除 `shared_dir/{workspace}/{store_name}/{layer_name}/` 整個目錄。
-    """
-    client = get_client()
-    result = client.clear_layer_directory(workspace, store_name, layer_name)
     return {"message": result}
 
 

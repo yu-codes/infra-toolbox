@@ -1,50 +1,113 @@
-# Skill: tdd-workflow
+---
+name: tdd-workflow
+description: Test-Driven Development workflow. Use when implementing new features, fixing bugs, or when user asks to write code test-first.
+---
 
-Apply red-green-refactor TDD cycle to any function or feature.
+# TDD Workflow
 
-## Steps
+Enforce Red-Green-Refactor cycle for all implementations.
 
-### Red — Write a failing test
-1. Identify the smallest testable unit
-2. Write one test that calls the function with expected input/output
-3. Run the test — confirm it fails
+## When to Use
 
-### Green — Make it pass
-4. Write the minimum code to pass the test
-5. Run the test — confirm it passes
+- New feature implementation
+- Bug fixes (write regression test first)
+- Refactoring existing code
+- Any time user says "TDD", "test first", or "test-driven"
 
-### Refactor
-6. Clean up code without changing behavior
-7. Re-run tests — still green
+## Workflow
 
-### Repeat
-8. Add next test for edge case or next behavior
-9. Repeat from step 1
+### Step 1: Define Interface
+Before any test, clarify the function signature:
+- Input types and constraints
+- Output type and shape
+- Side effects (DB writes, API calls)
+- Error cases
 
-## Python (pytest)
+### Step 2: RED — Write Failing Test
 
 ```python
-# tests/test_items.py
-def test_create_item_returns_id():
-    result = create_item({"name": "test"})
-    assert result["id"] is not None
+# Python: tests/test_<module>.py
+import pytest
+from app.services.items import create_item
+
+class TestCreateItem:
+    async def test_creates_with_valid_data(self, db_session):
+        result = await create_item(db_session, name="Widget", price=9.99)
+        assert result.id is not None
+        assert result.name == "Widget"
+
+    async def test_rejects_negative_price(self, db_session):
+        with pytest.raises(ValueError, match="price must be positive"):
+            await create_item(db_session, name="Widget", price=-1)
 ```
 
-## Vue (vitest)
-
-```ts
-// components/__tests__/MyComponent.spec.ts
+```typescript
+// Vue: src/components/__tests__/ItemForm.spec.ts
 import { mount } from '@vue/test-utils'
-import MyComponent from '../MyComponent.vue'
+import ItemForm from '../ItemForm.vue'
 
-test('renders label', () => {
-  const wrapper = mount(MyComponent, { props: { label: 'Hello' } })
-  expect(wrapper.text()).toContain('Hello')
+describe('ItemForm', () => {
+  it('emits submit with form data', async () => {
+    const wrapper = mount(ItemForm)
+    await wrapper.find('[data-testid="name"]').setValue('Widget')
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('submit')?.[0][0]).toEqual({ name: 'Widget' })
+  })
 })
+```
+
+### Step 3: Run Test — Confirm FAIL
+
+```bash
+pytest tests/test_items.py -x -v        # Python
+npx vitest run src/**/*.spec.ts          # Vue
+```
+
+The test MUST fail. If it passes, the test is not testing new behavior.
+
+### Step 4: GREEN — Minimal Implementation
+
+Write ONLY enough code to make the test pass. No extras.
+
+### Step 5: Run Test — Confirm PASS
+
+```bash
+pytest tests/test_items.py -x -v
+```
+
+### Step 6: REFACTOR
+
+- Remove duplication
+- Improve naming
+- Extract helpers if needed
+- Re-run tests — must still pass
+
+### Step 7: Repeat
+
+Add next test for:
+1. Edge case (empty input, boundary values)
+2. Error case (invalid data, missing fields)
+3. Integration (with database, with other services)
+
+### Step 8: Verify Coverage
+
+```bash
+pytest --cov=app --cov-fail-under=80
 ```
 
 ## Rules
 
-- One assertion per test when possible
-- Test behavior, not implementation
+- ONE test at a time — never bulk generate tests
+- Test BEHAVIOR, not implementation
 - Never skip the failing step
+- Mocks for external dependencies only
+- Each test must be independent (no shared mutable state)
+
+## Coverage Targets
+
+| Component | Minimum |
+|-----------|---------|
+| Business logic | 90% |
+| API endpoints | 80% |
+| Utility functions | 80% |
+| Vue components | 70% |

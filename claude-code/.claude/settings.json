@@ -1,34 +1,104 @@
 {
-  "version": 1,
-  "context": {
-    "maxTokens": 8000,
-    "autoTruncate": true,
-    "prioritizeRecentFiles": true
-  },
-  "tools": {
-    "enabled": [
-      "Read",
-      "Write",
-      "Edit",
-      "Glob",
-      "Grep",
-      "Bash",
-      "Agent"
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(pytest *)",
+      "Bash(pip install *)",
+      "Bash(pip-audit)",
+      "Bash(uv *)",
+      "Bash(ruff *)",
+      "Bash(mypy *)",
+      "Bash(bandit *)",
+      "Bash(vulture *)",
+      "Bash(docker compose *)",
+      "Bash(docker build *)",
+      "Bash(docker exec *)",
+      "Bash(docker logs *)",
+      "Bash(docker ps *)",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(npm audit *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vitest *)",
+      "Bash(npx eslint *)",
+      "Bash(npx prettier *)",
+      "Bash(npx knip *)",
+      "Bash(npx depcheck *)",
+      "Bash(pnpm *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(curl *)",
+      "Bash(jq *)"
     ],
-    "notes": "Keep tool list minimal. Add only when needed."
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/credentials*)"
+    ]
   },
-  "defaults": {
-    "agent": "backend-dev",
-    "confirmDestructive": true,
-    "autoFormat": false
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
   },
-  "skills": {
-    "path": ".claude/skills"
-  },
-  "agents": {
-    "path": ".claude/agents"
-  },
+  "model": "sonnet",
   "hooks": {
-    "path": ".claude/hooks"
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=\"$CLAUDE_TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *.py ]]; then ruff format \"$FILE\" 2>/dev/null && ruff check --fix --quiet \"$FILE\" 2>/dev/null; fi'",
+            "timeout": 10
+          }
+        ],
+        "description": "Auto-format Python files after edit"
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=\"$CLAUDE_TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *.ts || \"$FILE\" == *.vue || \"$FILE\" == *.js ]]; then npx prettier --write \"$FILE\" 2>/dev/null; fi'",
+            "timeout": 10
+          }
+        ],
+        "description": "Auto-format Vue/TS/JS files after edit"
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=\"$CLAUDE_TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *.ts || \"$FILE\" == *.vue || \"$FILE\" == *.js || \"$FILE\" == *.jsx || \"$FILE\" == *.tsx ]]; then grep -n \"console\\.log\" \"$FILE\" 2>/dev/null && echo \"⚠️  [Hook] console.log detected in $FILE — remove before commit\" >&2; fi; exit 0'",
+            "timeout": 5
+          }
+        ],
+        "description": "Warn about console.log in JS/TS/Vue files"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'CMD=\"$CLAUDE_TOOL_INPUT_COMMAND\"; if echo \"$CMD\" | grep -qE \"^(git push|docker push)\"; then echo \"⚠️  [Hook] Push detected — have you run /quality-gate?\" >&2; fi; exit 0'",
+            "timeout": 5
+          }
+        ],
+        "description": "Remind to run quality checks before push"
+      }
+    ]
   }
 }

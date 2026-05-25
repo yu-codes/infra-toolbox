@@ -21,6 +21,7 @@
       "Bash(gh *)",
       "Bash(npm run *)",
       "Bash(npm test *)",
+      "Bash(npm install *)",
       "Bash(npm audit *)",
       "Bash(npx tsc *)",
       "Bash(npx vitest *)",
@@ -29,6 +30,8 @@
       "Bash(npx knip *)",
       "Bash(npx depcheck *)",
       "Bash(pnpm *)",
+      "Bash(bun *)",
+      "Bash(node *)",
       "Bash(cat *)",
       "Bash(head *)",
       "Bash(tail *)",
@@ -36,7 +39,13 @@
       "Bash(find *)",
       "Bash(grep *)",
       "Bash(curl *)",
-      "Bash(jq *)"
+      "Bash(jq *)",
+      "Bash(ls *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(touch *)"
     ],
     "deny": [
       "Read(./.env)",
@@ -69,7 +78,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'FILE=\"$CLAUDE_TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *.ts || \"$FILE\" == *.vue || \"$FILE\" == *.js ]]; then npx prettier --write \"$FILE\" 2>/dev/null; fi'",
+            "command": "bash -c 'FILE=\"$CLAUDE_TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" == *.ts || \"$FILE\" == *.tsx || \"$FILE\" == *.vue || \"$FILE\" == *.js || \"$FILE\" == *.jsx || \"$FILE\" == *.css || \"$FILE\" == *.json ]]; then npx prettier --write \"$FILE\" 2>/dev/null || true; fi'",
             "timeout": 10
           }
         ],
@@ -93,7 +102,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'CMD=\"$CLAUDE_TOOL_INPUT_COMMAND\"; if echo \"$CMD\" | grep -qE \"^(git push|docker push)\"; then echo \"⚠️  [Hook] Push detected — have you run /quality-gate?\" >&2; fi; exit 0'",
+            "command": "bash -c 'CMD=\"$CLAUDE_TOOL_INPUT_COMMAND\"; if echo \"$CMD\" | grep -qE \"(git push|docker push)\"; then echo \"[Hook] Push detected — have you run /quality-gate?\" >&2; fi; if echo \"$CMD\" | grep -qE \"(rm -rf|DROP TABLE|truncate)\"; then echo \"[Hook] DESTRUCTIVE COMMAND detected: $CMD\" >&2; fi; exit 0'",
             "timeout": 5
           }
         ],

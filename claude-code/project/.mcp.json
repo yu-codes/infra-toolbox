@@ -4,7 +4,7 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_PAT_HERE"
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
       },
       "description": "GitHub operations — PRs, issues, repos, code search"
     },
@@ -31,7 +31,8 @@
   },
   "_comments": {
     "usage": "Copy this file to your project root as .mcp.json",
-    "setup": "Replace YOUR_GITHUB_PAT_HERE with your actual GitHub PAT",
-    "context_warning": "Keep under 10 MCPs enabled to preserve context window (200k → ~70k with too many)"
+    "setup": "GITHUB_TOKEN is read from settings.local.json env or shell environment",
+    "add_more": "Add project-specific MCP servers (postgres, slack, etc.) as needed",
+    "context_warning": "Keep total MCP servers (global + project) ≤ 10 to preserve context window"
   }
 }

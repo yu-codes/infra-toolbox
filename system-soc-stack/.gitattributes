@@ -1,0 +1,6 @@
+# Force LF line endings for config files that get mounted into Linux containers
+config/**/*.conf text eol=lf
+config/**/*.yml text eol=lf
+config/**/*.yaml text eol=lf
+config/**/*.xml text eol=lf
+scripts/*.sh text eol=lf

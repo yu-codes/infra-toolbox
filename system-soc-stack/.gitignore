@@ -1,0 +1,11 @@
+# TLS Certificates (generated per-host)
+certs/
+
+# Environment (contains passwords)
+.env
+
+# Runtime data (all persistent volumes)
+data/
+
+# Logs
+*.log

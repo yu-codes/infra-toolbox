@@ -1,0 +1,33 @@
+---
+# =============================================================================
+# Wazuh Indexer - Internal Users Configuration
+# =============================================================================
+# These are the default internal users for OpenSearch security plugin.
+# Passwords should be hashed using the hash.sh tool.
+# For initial setup, these will be configured by the setup script.
+
+_meta:
+  type: "internalusers"
+  config_version: 2
+
+admin:
+  hash: "$2y$12$SixTZ4icq23gPUrYV.1waOoxVUVQYn3sFvr/HftLNs9cW/CdSY3em"
+  reserved: true
+  backend_roles:
+    - "admin"
+  description: "Admin user"
+
+kibanaserver:
+  hash: "$2y$12$SixTZ4icq23gPUrYV.1waOoxVUVQYn3sFvr/HftLNs9cW/CdSY3em"
+  reserved: true
+  description: "Wazuh dashboard user"
+
+kibanaro:
+  hash: "$2y$12$SixTZ4icq23gPUrYV.1waOoxVUVQYn3sFvr/HftLNs9cW/CdSY3em"
+  reserved: false
+  backend_roles:
+    - "kibanauser"
+    - "readall"
+  attributes:
+    attribute1: "value1"
+  description: "Wazuh dashboard read-only user"

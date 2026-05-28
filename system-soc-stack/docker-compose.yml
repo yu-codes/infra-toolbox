@@ -1,0 +1,275 @@
+# =============================================================================
+# System SOC Stack - Lightweight SOC with Wazuh + ClamAV
+# =============================================================================
+# One-click deployment: docker compose up -d
+#
+# Architecture:
+#   Wazuh Indexer  → stores alerts & logs (OpenSearch)
+#   Wazuh Manager  → SIEM engine, rule correlation, agent management
+#   Wazuh Dashboard → Web UI for alert visualization
+#   Wazuh Agent    → endpoint monitoring, log collection
+#   ClamAV         → antivirus scanning (clamd + freshclam)
+#   ClamAV Scanner → scheduled full-disk scan (cron-based)
+#
+# Data Flow:
+#   ClamAV scan → scan.log → Wazuh Agent → Manager (rules) → Indexer → Dashboard
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Wazuh Indexer (OpenSearch)
+  # ---------------------------------------------------------------------------
+  wazuh-indexer:
+    image: wazuh/wazuh-indexer:4.14.5
+    container_name: soc-wazuh-indexer
+    hostname: wazuh-indexer
+    restart: unless-stopped
+    environment:
+      - "OPENSEARCH_JAVA_OPTS=-Xms${INDEXER_HEAP:-512m} -Xmx${INDEXER_HEAP:-512m}"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - ./data/indexer:/var/lib/wazuh-indexer
+      - ./config/wazuh-indexer/opensearch.yml:/usr/share/wazuh-indexer/config/opensearch.yml:ro
+      - ./config/wazuh-indexer/internal_users.yml:/usr/share/wazuh-indexer/config/opensearch-security/internal_users.yml:ro
+      - ./certs/indexer.pem:/usr/share/wazuh-indexer/config/certs/indexer.pem:ro
+      - ./certs/indexer-key.pem:/usr/share/wazuh-indexer/config/certs/indexer-key.pem:ro
+      - ./certs/root-ca.pem:/usr/share/wazuh-indexer/config/certs/root-ca.pem:ro
+      - ./certs/admin.pem:/usr/share/wazuh-indexer/config/certs/admin.pem:ro
+      - ./certs/admin-key.pem:/usr/share/wazuh-indexer/config/certs/admin-key.pem:ro
+    networks:
+      - soc-network
+    ports:
+      - "${INDEXER_PORT:-9200}:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sk https://localhost:9200 -o /dev/null -w '%{http_code}' | grep -qE '^(200|401|403|503)$'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Indexer Init (one-shot: auto-initializes OpenSearch security, then exits)
+  # ---------------------------------------------------------------------------
+  indexer-init:
+    image: wazuh/wazuh-indexer:4.14.5
+    container_name: soc-indexer-init
+    depends_on:
+      wazuh-indexer:
+        condition: service_healthy
+    volumes:
+      - ./certs/root-ca.pem:/certs/root-ca.pem:ro
+      - ./certs/admin.pem:/certs/admin.pem:ro
+      - ./certs/admin-key.pem:/certs/admin-key.pem:ro
+    networks:
+      - soc-network
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        echo "[init] Waiting for indexer API..."
+        until curl -sk https://wazuh-indexer:9200 -o /dev/null 2>/dev/null; do sleep 2; done
+        echo "[init] Running securityadmin to initialize users/roles..."
+        export JAVA_HOME=/usr/share/wazuh-indexer/jdk
+        export PATH=$$JAVA_HOME/bin:$$PATH
+        OPENSEARCH_CONF_DIR=/usr/share/wazuh-indexer/config \
+        /usr/share/wazuh-indexer/plugins/opensearch-security/tools/securityadmin.sh \
+          -cd /usr/share/wazuh-indexer/config/opensearch-security/ \
+          -nhnv \
+          -cacert /certs/root-ca.pem \
+          -cert /certs/admin.pem \
+          -key /certs/admin-key.pem \
+          -h wazuh-indexer \
+          -p 9200 \
+          -icl
+        echo "[init] Done."
+
+  # ---------------------------------------------------------------------------
+  # Wazuh Manager (SIEM engine)
+  # ---------------------------------------------------------------------------
+  wazuh-manager:
+    image: wazuh/wazuh-manager:4.14.5
+    container_name: soc-wazuh-manager
+    hostname: wazuh-manager
+    restart: unless-stopped
+    depends_on:
+      wazuh-indexer:
+        condition: service_healthy
+      indexer-init:
+        condition: service_completed_successfully
+    environment:
+      - "INDEXER_URL=https://wazuh-indexer:9200"
+      - "INDEXER_USERNAME=admin"
+      - "INDEXER_PASSWORD=${INDEXER_PASSWORD:-admin}"
+      - "FILEBEAT_SSL_VERIFICATION_MODE=full"
+      - "SSL_CERTIFICATE_AUTHORITIES=/etc/ssl/root-ca.pem"
+      - "SSL_CERTIFICATE=/etc/ssl/filebeat.pem"
+      - "SSL_KEY=/etc/ssl/filebeat-key.pem"
+      - "API_USERNAME=${WAZUH_API_USER:-wazuh-wui}"
+      - "API_PASSWORD=${WAZUH_API_PASSWORD:-MyS3cr3tP4ss}"
+    volumes:
+      - ./data/manager/data:/var/ossec/data
+      - ./data/manager/logs:/var/ossec/logs
+      - ./data/manager/etc:/var/ossec/etc
+      - ./data/manager/queue:/var/ossec/queue
+      - ./config/wazuh-manager/ossec.conf:/wazuh-config-mount/etc/ossec.conf:ro
+      - ./config/wazuh-manager/rules/clamav_rules.xml:/var/ossec/etc/rules/clamav_rules.xml:ro
+      - ./certs/root-ca.pem:/etc/ssl/root-ca.pem:ro
+      - ./certs/manager.pem:/etc/ssl/filebeat.pem:ro
+      - ./certs/manager-key.pem:/etc/ssl/filebeat-key.pem:ro
+      - ./data/clamav-logs:/var/log/clamav:ro
+    networks:
+      - soc-network
+    ports:
+      - "${MANAGER_PORT:-1514}:1514"
+      - "${MANAGER_REG_PORT:-1515}:1515"
+      - "${MANAGER_API_PORT:-55000}:55000"
+    healthcheck:
+      test: ["CMD-SHELL", "/var/ossec/bin/wazuh-control status | grep -q 'is running'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+
+  # ---------------------------------------------------------------------------
+  # Wazuh Dashboard (Web UI)
+  # ---------------------------------------------------------------------------
+  wazuh-dashboard:
+    image: wazuh/wazuh-dashboard:4.14.5
+    container_name: soc-wazuh-dashboard
+    hostname: wazuh-dashboard
+    restart: unless-stopped
+    depends_on:
+      wazuh-manager:
+        condition: service_healthy
+    environment:
+      - "INDEXER_USERNAME=admin"
+      - "INDEXER_PASSWORD=${INDEXER_PASSWORD:-admin}"
+      - "WAZUH_API_URL=https://wazuh-manager"
+      - "DASHBOARD_USERNAME=kibanaserver"
+      - "DASHBOARD_PASSWORD=${INDEXER_PASSWORD:-admin}"
+      - "API_USERNAME=${WAZUH_API_USER:-wazuh-wui}"
+      - "API_PASSWORD=${WAZUH_API_PASSWORD:-MyS3cr3tP4ss}"
+      - "SERVER_SSL_ENABLED=true"
+      - "SERVER_SSL_CERTIFICATE=/usr/share/wazuh-dashboard/certs/dashboard.pem"
+      - "SERVER_SSL_KEY=/usr/share/wazuh-dashboard/certs/dashboard-key.pem"
+      - "OPENSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/wazuh-dashboard/certs/root-ca.pem"
+    volumes:
+      - ./config/wazuh-dashboard/opensearch_dashboards.yml:/usr/share/wazuh-dashboard/config/opensearch_dashboards.yml:ro
+      - ./certs/dashboard.pem:/usr/share/wazuh-dashboard/certs/dashboard.pem:ro
+      - ./certs/dashboard-key.pem:/usr/share/wazuh-dashboard/certs/dashboard-key.pem:ro
+      - ./certs/root-ca.pem:/usr/share/wazuh-dashboard/certs/root-ca.pem:ro
+      - ./data/dashboard:/usr/share/wazuh-dashboard/data
+    networks:
+      - soc-network
+    ports:
+      - "${DASHBOARD_PORT:-5601}:5601"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sk https://localhost:5601/api/status -o /dev/null -w '%{http_code}' | grep -qE '^(200|401|302)$'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  # ---------------------------------------------------------------------------
+  # Wazuh Agent (monitors ClamAV logs + host logs)
+  # ---------------------------------------------------------------------------
+  wazuh-agent:
+    image: wazuh/wazuh-agent:4.14.5
+    container_name: soc-wazuh-agent
+    hostname: soc-agent-01
+    restart: unless-stopped
+    depends_on:
+      wazuh-manager:
+        condition: service_healthy
+    environment:
+      - "WAZUH_MANAGER=wazuh-manager"
+      - "WAZUH_AGENT_GROUP=default"
+      - "WAZUH_AGENT_NAME=soc-agent-01"
+    volumes:
+      - ./config/wazuh-agent/ossec.conf:/var/ossec/etc/ossec.conf:ro
+      - ./data/clamav-logs:/var/log/clamav:ro
+      - /var/log:/host/var/log:ro
+    networks:
+      - soc-network
+    healthcheck:
+      test: ["CMD-SHELL", "/var/ossec/bin/wazuh-control status | grep -q 'is running'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # ClamAV (antivirus daemon + virus DB auto-updater)
+  # ---------------------------------------------------------------------------
+  clamav:
+    image: clamav/clamav:1.4
+    container_name: soc-clamav
+    hostname: clamav
+    restart: unless-stopped
+    environment:
+      - "CLAMAV_NO_CLAMD=false"
+      - "CLAMAV_NO_FRESHCLAMD=false"
+      - "CLAMAV_NO_MILTERD=true"
+      - "CLAMD_STARTUP_TIMEOUT=1800"
+    volumes:
+      - ./data/clamav-db:/var/lib/clamav
+      - ./data/clamav-logs:/var/log/clamav
+      - ./config/clamav/clamd.conf:/etc/clamav/clamd.conf:ro
+      - ./config/clamav/freshclam.conf:/etc/clamav/freshclam.conf:ro
+      - /:/scandir:ro
+    networks:
+      - soc-network
+    healthcheck:
+      test: ["CMD-SHELL", "clamdscan --ping 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 300s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+  # ---------------------------------------------------------------------------
+  # ClamAV Scanner (scheduled full-disk scan via cron)
+  # ---------------------------------------------------------------------------
+  clamav-scanner:
+    image: clamav/clamav:1.4
+    container_name: soc-clamav-scanner
+    hostname: clamav-scanner
+    restart: unless-stopped
+    depends_on:
+      clamav:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "${SCAN_SCHEDULE:-0 2 * * *} /scripts/clamav-scan.sh >> /var/log/clamav/cron.log 2>&1" > /etc/crontabs/root
+        crond -f -l 2
+    volumes:
+      - ./data/clamav-db:/var/lib/clamav:ro
+      - ./data/clamav-logs:/var/log/clamav
+      - ./scripts/clamav-scan.sh:/scripts/clamav-scan.sh:ro
+      - /:/scandir:ro
+    networks:
+      - soc-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 256M
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  soc-network:
+    driver: bridge

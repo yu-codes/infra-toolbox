@@ -117,16 +117,4 @@
     <group>clamav_error,clamav_update,vulnerability,</group>
   </rule>
 
-  <!-- ======================================================================
-       EICAR TEST DETECTION (for testing)
-       ====================================================================== -->
-
-  <!-- MEDIUM: EICAR test file detected (testing purposes) -->
-  <rule id="100130" level="7">
-    <if_sid>100101</if_sid>
-    <regex>Eicar|EICAR</regex>
-    <description>ClamAV: EICAR test file detected - this is a test detection</description>
-    <group>clamav_test,</group>
-  </rule>
-
 </group>

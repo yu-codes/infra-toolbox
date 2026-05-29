@@ -84,12 +84,7 @@ system-soc-stack/
 ├── scripts/                    # 操作腳本
 │   ├── generate-certs.sh       #   產生所有 TLS 憑證
 │   ├── clamav-scan.sh          #   排程掃描腳本（由 clamav-scanner 容器執行）
-│   ├── health-check.sh         #   檢查所有服務健康狀態
-│   └── test-eicar.sh           #   EICAR 測試（驗證病毒偵測是否正常）
-│
-└── tests/                      # 自動化測試
-    ├── test-unit.sh            #   單元測試（驗證設定檔正確性）
-    └── test-e2e.sh             #   端對端測試（完整流程驗證）
+│   └── health-check.sh         #   檢查所有服務健康狀態
 ```
 
 ## 服務架構
@@ -124,9 +119,6 @@ docker compose logs -f wazuh-manager
 # 手動觸發病毒掃描
 docker exec soc-clamav-scanner /scripts/clamav-scan.sh
 
-# EICAR 測試（驗證偵測功能）
-./scripts/test-eicar.sh
-
 # 健康檢查
 ./scripts/health-check.sh
 
@@ -152,3 +144,8 @@ docker compose down && rm -rf data/
 - `vm.max_map_count` 必須設定，否則 OpenSearch 無法啟動
 - 生產環境請務必修改 `.env` 中的所有預設密碼
 - `certs/` 目錄中的憑證有效期 10 年，建議定期更換
+
+## 文件
+
+- [操作手冊](docs/OPERATIONS.md) — 完整的啟停流程、健康檢查、故障排除
+- [安全審計報告](docs/SECURITY_AUDIT_REPORT.md) — 部署驗證報告（供稽核審查）

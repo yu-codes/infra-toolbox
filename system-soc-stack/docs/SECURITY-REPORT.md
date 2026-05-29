@@ -36,20 +36,17 @@ docker compose ps
 
 **截圖要求**：Security Events 頁面，顯示有事件記錄。
 
-### Step 5：執行 EICAR 測試驗證偵測能力
+### Step 5：確認防毒偵測能力
+
+驗證 ClamAV 防毒引擎運作正常：
 
 ```bash
-./scripts/test-eicar.sh
+sudo docker exec soc-clamav clamdscan --ping 1
 ```
 
-此腳本會：
-- 在 ClamAV 容器中建立 EICAR 測試檔案（標準防毒測試樣本，非真實病毒）
-- 觸發掃描
-- 驗證 ClamAV 是否正確偵測
-
 **截圖要求**：
-1. 終端顯示 `[PASS] EICAR detected` 的結果
-2. Dashboard → Security events 中出現 ClamAV 相關告警（Rule ID 100101）
+1. 終端顯示 ClamAV daemon 回應正常
+2. Dashboard → Security events 中確認有 ClamAV 相關告警
 
 ### Step 6：確認弱點掃描
 

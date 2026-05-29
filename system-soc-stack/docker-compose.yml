@@ -110,12 +110,14 @@ services:
       - "SSL_CERTIFICATE=/etc/ssl/filebeat.pem"
       - "SSL_KEY=/etc/ssl/filebeat-key.pem"
       - "API_USERNAME=${WAZUH_API_USER:-wazuh-wui}"
-      - "API_PASSWORD=${WAZUH_API_PASSWORD:-MyS3cr3tP4ss}"
+      - "API_PASSWORD=${WAZUH_API_PASSWORD:-Wazuh@S0c2026!}"
     volumes:
       - ./data/manager/data:/var/ossec/data
       - ./data/manager/logs:/var/ossec/logs
       - ./data/manager/etc:/var/ossec/etc
       - ./data/manager/queue:/var/ossec/queue
+      - ./data/manager/var-multigroups:/var/ossec/var/multigroups
+      - ./data/manager/api-configuration:/var/ossec/api/configuration
       - ./config/wazuh-manager/ossec.conf:/wazuh-config-mount/etc/ossec.conf:ro
       - ./config/wazuh-manager/rules/clamav_rules.xml:/var/ossec/etc/rules/clamav_rules.xml:ro
       - ./certs/root-ca.pem:/etc/ssl/root-ca.pem:ro
@@ -151,9 +153,9 @@ services:
       - "INDEXER_PASSWORD=${INDEXER_PASSWORD:-admin}"
       - "WAZUH_API_URL=https://wazuh-manager"
       - "DASHBOARD_USERNAME=kibanaserver"
-      - "DASHBOARD_PASSWORD=${INDEXER_PASSWORD:-admin}"
+      - "DASHBOARD_PASSWORD=kibanaserver"
       - "API_USERNAME=${WAZUH_API_USER:-wazuh-wui}"
-      - "API_PASSWORD=${WAZUH_API_PASSWORD:-MyS3cr3tP4ss}"
+      - "API_PASSWORD=${WAZUH_API_PASSWORD:-Wazuh@S0c2026!}"
       - "SERVER_SSL_ENABLED=true"
       - "SERVER_SSL_CERTIFICATE=/usr/share/wazuh-dashboard/certs/dashboard.pem"
       - "SERVER_SSL_KEY=/usr/share/wazuh-dashboard/certs/dashboard-key.pem"
@@ -260,12 +262,41 @@ services:
       - /:/scandir:ro
     networks:
       - soc-network
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep crond || pgrep cron"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     deploy:
       resources:
         limits:
           memory: 2G
         reservations:
           memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Syslog Relay (UDP→TCP forwarder for ClamAV alerts)
+  # Receives UDP syslog from Wazuh csyslogd, forwards via TCP to SOC collector
+  # ---------------------------------------------------------------------------
+  syslog-relay:
+    image: alpine/socat:latest
+    container_name: soc-syslog-relay
+    hostname: syslog-relay
+    restart: unless-stopped
+    command: UDP-LISTEN:1514,fork,reuseaddr TCP:172.16.5.68:527
+    networks:
+      - soc-network
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep socat"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 64M
 
 # =============================================================================
 # Networks

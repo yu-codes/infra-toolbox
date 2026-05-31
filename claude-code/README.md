@@ -714,6 +714,19 @@ claude mcp add postgres -- npx -y @modelcontextprotocol/server-postgres "$DATABA
 | 13 | [模型配置](tutorial/13-MODEL-CONFIGURATION.md) | 本地/第三方模型 | ⭐⭐⭐ |
 | 14 | [Claude Design](tutorial/14-CLAUDE-DESIGN.md) | 前端設計 Skill | ⭐⭐ |
 | 15 | [完整使用情境](tutorial/15-USAGE-SCENARIO.md) | 端到端開發範例 | ⭐⭐⭐ |
+| 16 | [聊天室 Repo 管理](tutorial/16-CHAT-REPO-MANAGEMENT.md) | Slack/Discord 管理 Repo | ⭐⭐⭐⭐ |
+| 17 | [Harness Agent](tutorial/17-HARNESS-AGENT.md) | 程式化運行 Agent / CI | ⭐⭐⭐ |
+| 18 | [Dynamic Workflows](tutorial/18-WORKFLOWS.md) | 大規模子代理編排 | ⭐⭐⭐⭐ |
+
+---
+
+## 配置檔目錄
+
+| 目錄 | 說明 |
+|------|------|
+| `configs/chat-repo/` | 聊天室 ↔ Repo 映射設定 |
+| `configs/harness/` | Agent SDK / CI 自動化腳本 |
+| `configs/workflows/` | Dynamic Workflows 設定 |
 
 ---
 

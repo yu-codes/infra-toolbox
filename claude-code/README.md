@@ -517,7 +517,7 @@ claude-code/
 ├── .claude/                       # ═══ 舊版統一配置（保留相容）═══
 │   └── ...
 │
-└── tutorial/                      # 教學文件（19 篇）
+└── tutorial/                      # 教學文件（21 篇）
     ├── 01-INSTALLATION.md
     └── ...
 ```
@@ -733,5 +733,7 @@ claude mcp add postgres -- npx -y @modelcontextprotocol/server-postgres "$DATABA
 | 17 | [Harness Agent](tutorial/17-HARNESS-AGENT.md) | 程式化運行 Agent / CI | ⭐⭐⭐ |
 | 18 | [Dynamic Workflows](tutorial/18-WORKFLOWS.md) | 大規模子代理編排 | ⭐⭐⭐⭐ |
 | 19 | [多渠道機器人](tutorial/19-MULTI-CHANNEL-BOT.md) | Discord/Slack/Telegram 多渠道 Bot | ⭐⭐⭐⭐ |
+| 20 | [Token & Context 可視化](tutorial/20-TOKEN-CONTEXT-VISUALIZATION.md) | 成本監測與最佳實踐 | ⭐⭐⭐ |
+| 21 | [本地模型整合](tutorial/21-LOCAL-MODELS.md) | Ollama / LM Studio / Llama.cpp | ⭐⭐⭐⭐ |
 
 ---

@@ -2,6 +2,8 @@
 
 Harness（Agent SDK）讓你以程式化方式運行 Claude Code，適用於 CI/CD pipeline、自動化腳本、批次任務、以及自訂 agent 應用。
 
+> **💡 費用注意**：自 2026 年 6 月 15 日起，在 Claude.ai 訂閱方案（Pro/Max/Team/Enterprise）上使用 `claude -p`、Agent SDK 會消耗獨立的「**月度 Agent SDK 額度**」，與互動模式的用量額度分開計算。Console API key 使用者不受此影響，以 API token 計費。
+
 ---
 
 ## 概覽
@@ -36,15 +38,18 @@ claude -p "Refactor the entire src/ directory" \
   --max-turns 50
 ```
 
-### Bare 模式（推薦用於 CI）
+### Bare 模式（**CI 強烈推薦**）
 
-跳過所有自動載入（hooks, plugins, MCP, CLAUDE.md），只用你明確傳入的設定：
+跳過所有自動載入（hooks, plugins, MCP, CLAUDE.md），只用你明確傳入的設定。使每次 CI 執行結果一致，不受本機 `~/.claude/` 任何配置影響：
 
 ```bash
 claude --bare -p "Summarize this file" \
   --allowedTools "Read" \
   --model sonnet
 ```
+
+> 📌 官方文件說明：`--bare` 是 scripted/SDK 呼叫的**推薦模式**，未來版本將成為 `-p` 的預設行為。  
+> **Anthropic Authentication** 在 bare mode 下必須透過 `ANTHROPIC_API_KEY` 環境變數提供，不能使用 OAuth 登入。
 
 ### 結構化輸出
 
@@ -331,16 +336,6 @@ echo "---"
 echo "Cost: $(echo "$result" | jq -r '.total_cost_usd') USD"
 echo "Session: $(echo "$result" | jq -r '.session_id')"
 ```
-
----
-
-## 配置檔參考
-
-見 `configs/harness/` 目錄中的完整配置範本：
-- `harness.sh` — Shell harness 腳本
-- `agent-sdk-example.py` — Python Agent SDK 範例
-- `agent-sdk-example.ts` — TypeScript Agent SDK 範例
-- `github-action.yml` — GitHub Actions workflow
 
 ---
 

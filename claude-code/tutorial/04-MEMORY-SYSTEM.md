@@ -1,225 +1,190 @@
 # 04 — 記憶系統
 
-Claude Code 擁有三層記憶架構，讓 AI 能在不同範圍中記住上下文，提升長期協作效率。
+Claude Code 的記憶機制讓 AI 在不同範圍中保留上下文，提升長期協作效率。記憶分為兩個主要來源：**你手動撰寫的 CLAUDE.md**，以及 **Claude 自動累積的 auto memory**。
 
-## 三層記憶架構
-
-```
-┌──────────────────────────────────────────┐
-│  User Memory（使用者記憶）                  │  ~/.claude/memories/
-│  跨所有專案、跨所有對話永久保存              │
-├──────────────────────────────────────────┤
-│  Repo Memory（專案倉庫記憶）                │  .claude/memories/
-│  專案範圍，團隊可共享                       │
-├──────────────────────────────────────────┤
-│  Session Memory（對話記憶）                  │  對話內暫存
-│  僅限當前對話，結束後清除                    │
-└──────────────────────────────────────────┘
-```
-
-| 層級 | 路徑 | 生命週期 | 用途 |
-|------|------|---------|------|
-| User Memory | `~/.claude/memories/` | 永久 | 個人偏好、習慣模式、通用知識 |
-| Repo Memory | `.claude/memories/` | 隨 Git 提交 | 專案架構、技術決策、團隊規範 |
-| Session Memory | 對話內 | 對話結束清除 | 任務上下文、臨時筆記、進度追蹤 |
-
-## User Memory（使用者記憶）
-
-### 適合存放的內容
-
-- 個人程式碼風格偏好
-- 常用技術棧
-- 慣用的命名規範
-- 除錯策略和經驗教訓
-- 常用指令和快捷方式
-
-### 操作方式
+## 記憶架構總覽
 
 ```
-> 請記住：我偏好使用 TypeScript 而不是 JavaScript
-> 請記住：我的 commit message 格式是 conventional commits
-> 請記住：我習慣用 pnpm 而不是 npm
+┌──────────────────────────────────────────────────────────┐
+│  CLAUDE.md（人工撰寫）                                      │
+│  你定義規範、上下文、技術棧，Claude 每次啟動時自動載入          │
+├──────────────────────────────────────────────────────────┤
+│  Auto Memory（Claude 自動累積）                              │
+│  Claude 把對話中的重要知識寫入記憶檔，下次 session 自動讀取    │
+└──────────────────────────────────────────────────────────┘
 ```
 
-Claude 會自動將這些偏好寫入 User Memory。
+### CLAUDE.md 的作用範圍
 
-### 手動管理
+| CLAUDE.md 位置 | 作用範圍 | 說明 |
+|------|---------|------|
+| `~/.claude/CLAUDE.md` | 全域 | 所有專案共用（個人偏好） |
+| `<專案>/CLAUDE.md` | 專案 | 團隊共享，可提交 Git |
+| `<專案>/.claude/CLAUDE.md` | 專案 | 同上，替代位置 |
+| `<子目錄>/CLAUDE.md` | 子目錄 | 進入子目錄時自動載入 |
+| `CLAUDE.local.md` | 本地 | 個人偏好，建議加入 .gitignore |
+
+---
+
+## 一、CLAUDE.md（人工記憶）
+
+CLAUDE.md 是你明確告訴 Claude 的指令文件，是最直接的「記憶」形式。Claude 在每次 session 開始時自動讀取所有作用範圍內的 CLAUDE.md。
+
+### 全域 CLAUDE.md（使用者層）
+
+儲存你的個人偏好，跨所有專案套用：
+
+```markdown
+# ~/.claude/CLAUDE.md
+
+## 溝通偏好
+- 回覆語言：繁體中文
+- 程式碼註解：英文
+
+## 程式碼風格
+- 語言：TypeScript（優先）、Python
+- 縮排：2 空格
+- 套件管理：pnpm
+- Commit 格式：Conventional Commits（英文）
+
+## 安全原則
+- 不讀取 .env、secrets、keys 檔案
+- 不寫入 credentials 到程式碼
+```
+
+> **設定方式**：將 `claude-code/global/.claude/CLAUDE.md` 複製到 `~/.claude/CLAUDE.md`，依個人需求修改。
+
+### 專案 CLAUDE.md（專案層）
+
+儲存專案規範，與團隊共享（提交到 Git）：
+
+```markdown
+# CLAUDE.md  ← 專案根目錄
+
+FastAPI + PostgreSQL 電商後端。Python 3.12、SQLAlchemy 2.0、Redis 快取。
+
+## 規範
+- PEP 8，行寬 120，所有函式加 type hints
+- Commit：conventional commits
+- 新功能必須附單元測試，覆蓋率 ≥ 80%
+- 測試指令：`pytest tests/ -v`
+- 不修改 migrations/ 中已存在的檔案
+
+## 目錄結構
+src/api/ — routes | src/domain/ — models | src/infrastructure/ — DB/external
+
+@docs/ARCHITECTURE.md   ← 引入架構文件（詳細內容不塞進 CLAUDE.md）
+@docs/API_SPEC.md
+```
+
+### `@` 引入語法
+
+用 `@` 把詳細文件引入，讓 CLAUDE.md 保持簡潔：
+
+```markdown
+# CLAUDE.md
+這是一個 FastAPI 專案。詳細規範見下方。
+
+@docs/CODING_STANDARDS.md
+@docs/DATABASE_CONVENTIONS.md
+@.claude/skills/ddd-developer/SKILL.md
+```
+
+> 路徑相對於 CLAUDE.md 所在目錄。Claude 按需載入，不會一次全塞進 context。
+
+### 用 `/init` 自動生成
+
+讓 Claude 掃描專案後自動產生 CLAUDE.md：
+
+```bash
+claude
+> /init
+```
+
+Claude 會分析專案結構、依賴、測試設定，生成第一版 CLAUDE.md。
+
+---
+
+## 二、Auto Memory（自動記憶）
+
+Auto Memory 讓 Claude 把對話中學到的重要知識**自動寫入記憶檔**，下次 session 啟動時自動讀取前 200 行。
+
+### 儲存位置
+
+```
+~/.claude/projects/<project_path_hash>/memory/MEMORY.md
+```
+
+> 這是 Claude Code 自動管理的路徑。每個專案對應一個獨立的記憶檔。
+
+### 運作方式
+
+你不需要手動操作。Claude 會判斷哪些資訊值得記住：
+
+```
+> 我們的 Redis 快取 TTL 統一設為 300 秒
+> 生產環境不允許使用 root 帳號連線資料庫
+> 這個專案有個已知問題：Docker 在 M1 Mac 需加 platform: linux/amd64
+```
+
+Claude 會在適當時機把這些知識寫入 auto memory，下次開啟 session 時自動可用。
+
+### 查看目前記憶
+
+在 Claude Code session 中執行：
 
 ```
 > /memory
-
-# Claude 會顯示目前的記憶內容，你可以要求修改：
-> 刪除關於 JavaScript 的記憶
-> 更新我的技術棧偏好
 ```
 
-### User Memory 檔案範例
+Claude 會顯示目前載入的所有記憶內容（來自 CLAUDE.md 和 auto memory）。
 
-```markdown
-# ~/.claude/memories/preferences.md
+### 明確要求記住
 
-## 程式碼風格
-- 偏好 TypeScript，型別定義要完整
-- 使用 2 空格縮排
-- 字串使用單引號
-- 行寬上限 100 字元
-- 函式優先使用 arrow function
-
-## 工具偏好
-- 套件管理: pnpm
-- 測試框架: vitest
-- Linter: biome (不用 eslint)
-- 格式化: biome format
-
-## 溝通偏好
-- 用繁體中文回答
-- 程式碼註解用英文
-- commit message 用英文 conventional commits
-```
-
-## Repo Memory（專案倉庫記憶）
-
-### 適合存放的內容
-
-- 專案架構決策和原因
-- 團隊約定的開發規範
-- 已知的技術限制和 workarounds
-- 常見問題的解決方案
-- 重要的部署注意事項
-
-### 操作方式
+你也可以主動告知：
 
 ```
-> 為這個專案記住：我們使用 DDD 架構，domain 層不允許直接依賴 infrastructure
-> 為這個專案記住：Redis 快取 TTL 統一設為 300 秒
-> 為這個專案記住：API 版本控制使用 URL 前綴 /api/v1/
+> 請記住：我們使用 JWT + Refresh Token 方案（已決定，不再討論其他方案）
+> 這次 debug 經驗很有價值，請把解法記下來
+> 請更新記憶中關於 Redis 的部分，TTL 現在改為 600 秒
 ```
 
-### Repo Memory 檔案範例
+---
 
-```markdown
-# .claude/memories/architecture.md
+## 三、記憶 vs. CLAUDE.md 的分工
 
-## 架構決策
-- 使用 Clean Architecture / DDD 分層
-- Domain 層不依賴外部框架
-- Repository pattern 封裝資料存取
-- Application 層負責用例編排
+| 內容類型 | 推薦做法 |
+|---------|---------|
+| 技術棧、框架說明 | 寫在 `CLAUDE.md`（提交 Git，團隊共享） |
+| 程式碼規範、命名規則 | 寫在 `CLAUDE.md` |
+| 個人偏好（語言、工具） | 寫在 `~/.claude/CLAUDE.md`（不提交） |
+| 累積的架構決策 | 讓 Claude 寫入 auto memory |
+| 除錯經驗、已知 workarounds | 讓 Claude 寫入 auto memory |
+| 當前任務進度（臨時） | 只在對話中提及，不需永久記憶 |
 
-## 技術限制
-- PostgreSQL 不支援 JSONB 的部分更新（需整欄覆寫）
-- Redis cluster 模式不支援 multi-key 操作
-- 前端 API client 是自動生成的，不要手動修改 src/api/generated/
+---
 
-## 已知 Workarounds
-- Docker 在 M1 Mac 上需要 platform: linux/amd64
-- CI 中的 e2e 測試有時會因網路問題失敗，重試即可
-```
+## 四、非互動模式下的記憶
 
-## Session Memory（對話記憶）
-
-### 適合存放的內容
-
-- 當前任務的進度和狀態
-- 臨時的除錯記錄
-- 探索中的方案比較
-- 尚未完成的 TODO 清單
-
-### 操作方式
-
-Session Memory 在對話中自動管理，你也可以明確要求：
-
-```
-> 記住我們目前在處理用戶認證模組的重構
-> 記住我們決定使用 JWT + Refresh Token 方案
-> 目前的進度：已完成 token 產生，接下來要做 token 驗證
-```
-
-## 記憶管理技巧
-
-### 1. 讓 Claude 自動學習
-
-```
-> 剛才那個解法很有效，請記住這個模式以後可以複用
-> 這次 debug 經驗很有價值，記住當遇到 CORS 問題時的排查步驟
-```
-
-### 2. 結構化記憶
-
-```
-> 為這個專案建立記憶，分類為：
-> - 架構規範
-> - 資料庫約定
-> - API 設計規則
-> - 部署注意事項
-```
-
-### 3. 審查和清理
-
-```
-> 顯示所有記憶內容
-> 這條記憶已經過時了，請更新：[具體內容]
-> 清除所有 Session Memory，我要開始新任務
-```
-
-### 4. 記憶與 CLAUDE.md 的配合
-
-```
-CLAUDE.md  → 團隊共享的規範和上下文（提交到 Git）
-Repo Memory → 逐步累積的專案知識（也可提交 Git）
-User Memory → 個人偏好（不提交）
-```
-
-建議的分工：
-
-| 內容類型 | 放在 CLAUDE.md | 放在 Memory |
-|---------|--------------|-------------|
-| 技術棧說明 | ✓ | |
-| 程式碼規範 | ✓ | |
-| 架構決策記錄 | | ✓ Repo Memory |
-| Debug 經驗教訓 | | ✓ Repo / User Memory |
-| 個人編碼習慣 | | ✓ User Memory |
-| 臨時任務筆記 | | ✓ Session Memory |
-
-## 記憶如何影響 Claude 的行為
-
-When Claude starts a session, it loads memory in this order:
-
-```
-1. 讀取 User Memory     → 了解你的個人偏好
-2. 讀取 CLAUDE.md       → 了解專案規範
-3. 讀取 Repo Memory     → 了解專案歷史知識
-4. 建立 Session Memory  → 準備記錄本次對話
-```
-
-**實際效果範例：**
-
-沒有記憶：
-```
-> 幫我建立一個新的 service
-# Claude 可能用 JavaScript、class-based、npm...
-```
-
-有記憶：
-```
-> 幫我建立一個新的 service
-# Claude 直接用 TypeScript、function-based、pnpm
-# 遵循專案的 DDD 分層、加上正確的 type hints
-# commit message 用 conventional commits 格式
-```
-
-## 進階：程式化存取記憶
-
-在非互動模式（pipe mode）中也可以利用記憶：
+使用 `claude -p`（pipe mode）時，記憶會**照常載入**（CLAUDE.md + auto memory），除非使用 `--bare` flag：
 
 ```bash
-# 記憶會在 pipe mode 中自動載入
+# 一般 pipe mode（載入 CLAUDE.md + auto memory）
 echo "建立新的 UserService" | claude -p
 
-# 結合 Git Hook 自動更新記憶
-# .git/hooks/post-commit:
-claude -p "根據最近的 commit 更新 Repo Memory 中的變更記錄"
+# --bare 模式（跳過所有記憶載入，適合 CI）
+claude --bare -p "Review this file" --allowedTools "Read"
 ```
+
+> **CI/CD 建議**：在 CI 環境使用 `--bare`，避免受到本機 `~/.claude/` 配置影響，確保結果一致。
+
+---
+
+## 五、記憶安全提示
+
+- `CLAUDE.md` 會提交 Git，**不要放敏感資訊**（密碼、API key、內部 IP）
+- Auto memory 儲存在本機 `~/.claude/`，不會同步到任何服務
+- 使用 `CLAUDE.local.md`（加入 `.gitignore`）來存放個人的、不想共享的指令
 
 ---
 

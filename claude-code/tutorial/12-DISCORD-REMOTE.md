@@ -2,6 +2,8 @@
 
 透過 Claude Code 的 Channels 功能，你可以從 Discord、Telegram 或 iMessage 向本機執行中的 Claude Code session 發送訊息，讓 Claude 在你不在電腦前時也能處理任務。
 
+> **⚠️ Research Preview**：Channels 目前為研究預覽功能（v2.1.80+）。`--channels` 的語法與 plugin 協定未來可能改變。詳見[官方文件](https://code.claude.com/docs/en/channels)。
+
 ## 前置條件
 
 | 項目 | 需求 |
@@ -11,7 +13,10 @@
 | 執行環境 | [Bun](https://bun.sh/) 已安裝 |
 | 方案 | Pro / Max / Team / Enterprise |
 
-> **注意**: Team 和 Enterprise 方案需要管理員在 [Admin settings](https://claude.ai/admin-settings/claude-code) 中啟用 Channels。
+> **注意**：
+> - Team / Enterprise 方案需要管理員在 [Admin settings → Claude Code → Channels](https://claude.ai/admin-settings/claude-code) 中啟用。
+> - Console API key 帳號預設允許使用 Channels；claude.ai Pro/Max 帳號同樣可用。
+> - Amazon Bedrock、Google Vertex AI、Microsoft Foundry 不支援 Channels。
 
 ---
 
@@ -34,15 +39,20 @@
 在 Claude Code 中執行：
 
 ```bash
-# 新增官方 Plugin Marketplace（如果還沒加過）
-/plugin marketplace add anthropics/claude-plugins-official
-
 # 安裝 Discord channel plugin
 /plugin install discord@claude-plugins-official
-
-# 重新載入 plugins
-/reload-plugins
 ```
+
+> **若顯示 plugin not found**，表示 Marketplace 不存在或需要更新：
+> ```bash
+> # 新增官方 Marketplace（首次使用）
+> /plugin marketplace add anthropics/claude-plugins-official
+>
+> # 或更新已存在的 Marketplace
+> /plugin marketplace update claude-plugins-official
+> ```
+
+安裝完成後執行 `/reload-plugins` 啟用 configure 指令。
 
 ### Step 3：設定 Bot Token
 
@@ -134,13 +144,13 @@ claude remote-control --name "My Project"
 # 2. 安裝 plugin
 /plugin install telegram@claude-plugins-official
 
-# 3. 設定 token
+# 3. 設定 token（儲存到 ~/.claude/channels/telegram/.env）
 /telegram:configure <你的_BOT_TOKEN>
 
 # 4. 啟動
 claude --channels plugin:telegram@claude-plugins-official
 
-# 5. 在 Telegram 私訊你的 Bot，取得配對碼
+# 5. 在 Telegram 私訊你的 Bot，Bot 回覆配對碼
 /telegram:access pair <配對碼>
 /telegram:access policy allowlist
 ```

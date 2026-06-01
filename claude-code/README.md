@@ -1,14 +1,11 @@
 # Claude Code 全端工程師配置包
 
-針對 **Python + FastAPI + PostgreSQL + Vue 3** 全端技術棧最佳化的 Claude Code 配置。
-參考 [Everything Claude Code](https://github.com/affaan-m/everything-claude-code) 設計理念，精簡為單人全端工程師即時可用的配置包。
-
 本配置提供 **兩個版本**：
 
 | 版本 | 目錄 | 安裝位置 | 作用範圍 |
 |------|------|---------|---------|
-| **全域版** | `global/` | `~/.claude/` + `~/CLAUDE.md` | 所有專案共用 |
-| **專案版** | `project/` | `<project>/.claude/` + `<project>/CLAUDE.md` | 僅該專案生效 |
+| **全域版** | `global/` | `~/.claude/` + `~/.claude.json` | 所有專案共用 |
+| **專案版** | `project/` | `<project>/.claude/` + `<project>/.mcp.json` | 僅該專案生效 |
 
 ---
 
@@ -17,14 +14,15 @@
 ### 方式 A：僅安裝全域版（推薦新手）
 
 ```bash
-# 1. 複製全域設定
-cp global/CLAUDE.md ~/CLAUDE.md
-mkdir -p ~/.claude
-cp global/settings.json ~/.claude/settings.json
-cp global/mcp.json ~/.claude/mcp.json
+# 1. 複製全域 .claude 目錄（包含 CLAUDE.md、settings.json、rules/）
+cp -r global/.claude/ ~/.claude/
 
-# 2. 設定 MCP 環境變數（見下方「MCP 環境變數設定」章節）
-```
+# 2. 複製 MCP 設定到主目錄
+cp global/.claude.json ~/.claude.json
+
+# 3. 設定 MCP 環境變數（見下方「MCP 環境變數設定」章節）
+```  
+
 
 ### 方式 B：僅安裝專案版
 
@@ -47,10 +45,8 @@ echo 'CLAUDE.local.md' >> <your-project>/.gitignore
 
 ```bash
 # 1. 安裝全域版（個人偏好 + 通用 MCP）
-cp global/CLAUDE.md ~/CLAUDE.md
-mkdir -p ~/.claude
-cp global/settings.json ~/.claude/settings.json
-cp global/mcp.json ~/.claude/mcp.json
+cp -r global/.claude/ ~/.claude/
+cp global/.claude.json ~/.claude.json
 
 # 2. 安裝專案版（專案規範 + agents/commands/skills/rules）
 cp project/CLAUDE.md <your-project>/CLAUDE.md
@@ -74,11 +70,12 @@ echo '.claude/settings.local.json' >> <your-project>/.gitignore
 
 適合放置所有專案都通用的個人偏好設定：
 
-| 檔案 | 安裝位置 | 說明 |
+| 檔案/目錄 | 安裝位置 | 說明 |
 |------|---------|------|
-| `CLAUDE.md` | `~/CLAUDE.md` | 個人編碼偏好、語言、風格規範 |
-| `settings.json` | `~/.claude/settings.json` | 通用工具權限、模型偏好、autocompact |
-| `mcp.json` | `~/.claude/mcp.json` | 通用 MCP 伺服器（GitHub, context7, memory） |
+| `.claude/CLAUDE.md` | `~/.claude/CLAUDE.md` | 個人編碼偏好、語言、風格規範 |
+| `.claude/settings.json` | `~/.claude/settings.json` | 通用工具權限、模型偏好、autocompact |
+| `.claude/rules/global.md` | `~/.claude/rules/global.md` | 套用到所有專案的使用者規則 |
+| `.claude.json` | `~/.claude.json` | 通用 MCP 伺服器（GitHub, context7, memory） — 儲存在主目錄 |
 
 **全域版特點：**
 - ✅ 不含 hooks（避免在不同技術棧專案產生衝突）
@@ -136,7 +133,7 @@ echo '.claude/settings.local.json' >> <your-project>/.gitignore
 #### 方式 A：寫入全域 MCP 設定檔（簡單直接）
 
 ```bash
-# 編輯 ~/.claude/mcp.json
+# 編輯 ~/.claude.json
 # 將 YOUR_GITHUB_PAT_HERE 替換為你的 token
 ```
 
@@ -144,6 +141,9 @@ echo '.claude/settings.local.json' >> <your-project>/.gitignore
 {
   "mcpServers": {
     "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "github_pat_xxxxxxxxxxxxxxxx"
       }
@@ -176,6 +176,9 @@ source ~/.bashrc  # 或 source ~/.zshrc
 {
   "mcpServers": {
     "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": {
         "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
       }
@@ -202,8 +205,15 @@ claude mcp list
 
 ```json
 {
-  "env": {
-    "GITHUB_TOKEN": "github_pat_xxxxxxxxxxxxxxxx"
+  "mcpServers": {
+    "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
   }
 }
 ```
@@ -222,6 +232,7 @@ export DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
 {
   "mcpServers": {
     "postgres": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-postgres", "${DATABASE_URL}"]
     }
@@ -244,6 +255,7 @@ export SLACK_TEAM_ID="T0123456789"
 {
   "mcpServers": {
     "slack": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-slack"],
       "env": {
@@ -267,6 +279,7 @@ export LINEAR_API_KEY="lin_api_xxxxxxxx"
 {
   "mcpServers": {
     "linear": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@linear/mcp-server"],
       "env": {
@@ -289,6 +302,7 @@ export SENTRY_AUTH_TOKEN="sntrys_xxxxxxxx"
 {
   "mcpServers": {
     "sentry": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "@sentry/mcp-server"],
       "env": {
@@ -446,13 +460,15 @@ claude-code/
 ├── README.md                      # 本文件（完整教學）
 │
 ├── global/                        # ═══ 全域版（→ ~/.claude/）═══
-│   ├── CLAUDE.md                  # → ~/CLAUDE.md（個人偏好）
-│   ├── settings.json              # → ~/.claude/settings.json（通用權限、模型）
-│   └── mcp.json                   # → ~/.claude/mcp.json（通用 MCP）
+│   ├── .claude/
+│   │   ├── CLAUDE.md              # → ~/.claude/CLAUDE.md（個人偏好）
+│   │   ├── settings.json          # → ~/.claude/settings.json（通用權限、模型）
+│   │   └── rules/                 # → ~/.claude/rules/（全域規則）
+│   └── .claude.json               # → ~/.claude.json（通用 MCP 服務器）
 │
 ├── project/                       # ═══ 專案版（→ <project>/.claude/）═══
 │   ├── CLAUDE.md                  # → <project>/CLAUDE.md（專案記憶模板）
-│   ├── .mcp.json                  # → <project>/.mcp.json（專案 MCP）
+│   ├── .mcp.json                  # → <project>/.mcp.json（專案 MCP 服務器）
 │   └── .claude/
 │       ├── settings.json          # 專案設定：權限、hooks、環境變數
 │       ├── settings.local.json.example  # 本地密鑰範本（複製後填入 token）
@@ -501,7 +517,7 @@ claude-code/
 ├── .claude/                       # ═══ 舊版統一配置（保留相容）═══
 │   └── ...
 │
-└── tutorial/                      # 教學文件（15 篇）
+└── tutorial/                      # 教學文件（19 篇）
     ├── 01-INSTALLATION.md
     └── ...
 ```
@@ -509,17 +525,18 @@ claude-code/
 ### 安裝後的檔案位置對照
 
 ```
-全域版安裝後：                          專案版安裝後：
-~/                                     <project>/
-├── CLAUDE.md          ← 個人偏好       ├── CLAUDE.md              ← 專案規範
-└── .claude/                           ├── .mcp.json              ← 專案 MCP
-    ├── settings.json  ← 通用權限       └── .claude/
-    └── mcp.json       ← 通用 MCP          ├── settings.json      ← 專案權限 + hooks
-                                           ├── settings.local.json ← 本地密鑰（⚠️ 不提交 Git）
-                                           ├── agents/
-                                           ├── commands/
-                                           ├── skills/
-                                           └── rules/
+全域版安裝後：                               專案版安裝後：
+~/                                          <project>/
+├── CLAUDE.md                               ├── CLAUDE.md                 ← 專案規範
+│   ↑ 從 global/.claude/CLAUDE.md 複製      ├── .mcp.json                 ← 專案 MCP
+└── .claude/                                │   ↑ 從 project/.mcp.json 複製
+    ├── settings.json      ← 通用權限       └── .claude/
+    │   ↑ 從 global/.claude/settings.json     ├── settings.json           ← 專案權限 + hooks
+    ├── rules/                               ├── settings.local.json     ← 本地密鑰（⚠️ 不提交）
+    │   ↑ 從 global/.claude/rules/           ├── agents/
+    └── .claude.json       ← 通用 MCP        ├── commands/
+        ↑ 從 global/.claude.json 複製        ├── skills/
+                                             └── rules/
 ```
 
 ---
@@ -597,7 +614,7 @@ claude-code/
 
 ## MCP 伺服器
 
-### 全域版預設 MCP（`global/mcp.json` → `~/.claude/mcp.json`）
+### 全域版預設 MCP（`global/.claude.json` → `~/.claude.json`）
 
 | MCP | 用途 | 需要 Key | 放全域原因 |
 |-----|------|---------|-----------|
@@ -629,8 +646,6 @@ claude-code/
 | `puppeteer` | 瀏覽器控制 | 無 | 專案 |
 
 > 保持全域 + 專案 MCP 總數 ≤ 10 以避免 context 被過度佔用。
-
-### MCP 環境變數設定（完整教學見上方「MCP 環境變數完整設定」章節）
 
 ---
 
@@ -702,7 +717,7 @@ claude mcp add postgres -- npx -y @modelcontextprotocol/server-postgres "$DATABA
 | 01 | [安裝與環境設定](tutorial/01-INSTALLATION.md) | 安裝 Claude Code | ⭐ |
 | 02 | [基礎使用](tutorial/02-BASIC-USAGE.md) | 對話模式、斜線指令 | ⭐ |
 | 03 | [設定檔系統](tutorial/03-CONFIGURATION.md) | CLAUDE.md、.claude/ | ⭐⭐ |
-| 04 | [記憶系統](tutorial/04-MEMORY-SYSTEM.md) | 三層記憶架構 | ⭐⭐ |
+| 04 | [記憶系統](tutorial/04-MEMORY-SYSTEM.md) | CLAUDE.md + Auto Memory 自動蓄積 | ⭐⭐ |
 | 05 | [Prompt 工程](tutorial/05-PROMPT-ENGINEERING.md) | 高效指令策略 | ⭐⭐ |
 | 06 | [Agent 模式](tutorial/06-AGENT-MODE.md) | 自主任務執行 | ⭐⭐⭐ |
 | 07 | [MCP 整合](tutorial/07-MCP-INTEGRATION.md) | 外部工具串接 | ⭐⭐⭐ |
@@ -717,21 +732,6 @@ claude mcp add postgres -- npx -y @modelcontextprotocol/server-postgres "$DATABA
 | 16 | [聊天室 Repo 管理](tutorial/16-CHAT-REPO-MANAGEMENT.md) | Slack/Discord 管理 Repo | ⭐⭐⭐⭐ |
 | 17 | [Harness Agent](tutorial/17-HARNESS-AGENT.md) | 程式化運行 Agent / CI | ⭐⭐⭐ |
 | 18 | [Dynamic Workflows](tutorial/18-WORKFLOWS.md) | 大規模子代理編排 | ⭐⭐⭐⭐ |
+| 19 | [多渠道機器人](tutorial/19-MULTI-CHANNEL-BOT.md) | Discord/Slack/Telegram 多渠道 Bot | ⭐⭐⭐⭐ |
 
 ---
-
-## 配置檔目錄
-
-| 目錄 | 說明 |
-|------|------|
-| `configs/chat-repo/` | 聊天室 ↔ Repo 映射設定 |
-| `configs/harness/` | Agent SDK / CI 自動化腳本 |
-| `configs/workflows/` | Dynamic Workflows 設定 |
-
----
-
-## 參考
-
-- [Everything Claude Code](https://github.com/affaan-m/everything-claude-code) — 175K+ stars 的完整配置系統
-- [Claude Code 官方文件](https://docs.anthropic.com/en/docs/claude-code)
-- [Claude Code Settings Schema](https://json.schemastore.org/claude-code-settings.json)
